@@ -26,6 +26,8 @@ const CAT_META = {
 };
 const CAT_ORDER = ['obchod','zastavka','lekaren','lekar','skola','skolka','park'];
 let lens = 'access';        // 'access' | 'height'
+let catLens = '';           // '' = celkovo, inak kľúč kategórie
+let gridData = null;
 let amByCat = {};           // cat -> [[lon,lat],...] pre klik-výpočet
 let weakOn = false;
 let heightMin = 0, accessMin = 0;
@@ -36,7 +38,10 @@ const LANDMARKS = [
   { t:'pin', icon:'🏰', name:'Bratislavský hrad', at:[17.1003,48.1419], year:'9. stor. / obnova 1968', fact:'Dominanta nad Dunajom, dnes sídlo expozícií SNM.' },
   { t:'pin', icon:'🛸', name:'Most SNP · UFO', at:[17.1045,48.1383], year:'1972', fact:'Most s vyhliadkou UFO — jediný slovenský člen Svetovej federácie veží.' },
   { t:'pin', icon:'⛪', name:'Modrý kostolík', at:[17.1170,48.1437], year:'1913', fact:'Secesný skvost architekta Ödöna Lechnera.' },
-  { t:'pin', icon:'🏛️', name:'Grassalkovičov palác', at:[17.1106,48.1486], year:'1760', fact:'Sídlo prezidenta SR, za ním Francúzska záhrada.' },
+  { t:'pin', icon:'🏛️', name:'Prezidentský palác', at:[17.1106,48.1486], year:'1760', fact:'Grasalkovičov palác — sídlo prezidenta SR, za ním Francúzska záhrada.' },
+  { t:'pin', icon:'🏛️', name:'Úrad vlády SR', at:[17.1056,48.1487], year:'1761', fact:'Letný arcibiskupský palác na Námestí slobody.' },
+  { t:'pin', icon:'⚖️', name:'Národná rada SR', at:[17.0985,48.1394], year:'1994', fact:'Parlament na hradnom kopci.' },
+  { t:'pin', icon:'🏛️', name:'Stará radnica', at:[17.1085,48.1432], year:'14. stor.', fact:'Najstaršia radnica na Slovensku, dnes mestské múzeum.' },
   { t:'pin', icon:'🎭', name:'SND', at:[17.1238,48.1404], year:'2007', fact:'Nová budova Slovenského národného divadla na nábreží.' },
   { t:'pin', icon:'🏢', name:'Eurovea Tower', at:[17.1271,48.1398], year:'2023', fact:'Najvyššia budova Slovenska — 168 m.' },
   { t:'pin', icon:'🏙️', name:'Sky Park', at:[17.1255,48.1446], year:'2020', fact:'Rezidencie podľa návrhu Zahy Hadid.' },
@@ -115,7 +120,9 @@ map.on('load', async () => {
     loadJSON('rivers.geojson'), loadJSON('landmarks_info.json'),
     loadJSON('grid.geojson'),
   ]);
-  const cityRoads = await loadJSON('city_roads.geojson');
+  const [cityRoads, landGreen, landUse] = await Promise.all([
+    loadJSON('city_roads.geojson'), loadJSON('land_green.geojson'), loadJSON('land_use.geojson'),
+  ]);
   buildingsData = buildings;
   lmInfo = info && !info.features ? info : {};
   for (const c of CAT_ORDER) amByCat[c] = [];
@@ -124,6 +131,8 @@ map.on('load', async () => {
     if (amByCat[c]) amByCat[c].push(f.geometry.coordinates);
   }
 
+  map.addSource('land-green', { type: 'geojson', data: landGreen });
+  map.addSource('land-use', { type: 'geojson', data: landUse });
   map.addSource('water', { type: 'geojson', data: water });
   map.addSource('rivers', { type: 'geojson', data: rivers });
   map.addSource('green', { type: 'geojson', data: green });
@@ -133,6 +142,12 @@ map.on('load', async () => {
   map.addSource('amenities', { type: 'geojson', data: amenities });
   map.addSource('grid', { type: 'geojson', data: grid });
   map.addSource('buildings', { type: 'geojson', data: buildings, generateId: true });
+
+  /* celomestský terén — vyplní 'čierno okolo' (lesy, parky, plochy) */
+  map.addLayer({ id: 'land-use', type: 'fill', source: 'land-use',
+    paint: { 'fill-color': '#1a212b', 'fill-opacity': 0.8 } });
+  map.addLayer({ id: 'land-green', type: 'fill', source: 'land-green',
+    paint: { 'fill-color': '#1c4028', 'fill-opacity': 0.95 } });
 
   /* water — svetlomodrá, nech Dunaj vystúpi */
   map.addLayer({ id: 'water', type: 'fill', source: 'water',
@@ -241,15 +256,23 @@ map.on('load', async () => {
       'circle-opacity': 0.92,
     } });
 
+  gridData = grid;
   applyLight('day');
   computeStats(buildings, grid);
   buildLandmarks();
   setLens('access');
+  buildCatLens();
+  buildFindings(grid);
   wireUI();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
+  showIntro(grid);
+
+  // klik na hex/budovu = pointer
+  map.on('mouseenter', 'grid', () => map.getCanvas().style.cursor = 'pointer');
+  map.on('mouseleave', 'grid', () => map.getCanvas().style.cursor = '');
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, setLens, showSpotAt, openLandmarkCard, LANDMARKS, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setLens, setCatLens, showSpotAt, openLandmarkCard, LANDMARKS, TOUR };
   window.__ready = true;
 
   /* hover budov */
@@ -344,9 +367,15 @@ function renderLegend() {
     const ticks = [0, 15, 30, 60, 90, 130];
     el.innerHTML = `<div class="legend-bar legend-bar-h"></div>`
       + `<div class="legend-ticks">${ticks.map(t => `<span>${t}</span>`).join('')}</div>`;
+  } else if (catLens) {
+    // šošovka po kategórii → legenda v minútach pešo
+    el.innerHTML = `<div class="legend-bar legend-bar-m"></div>`
+      + `<div class="legend-ticks"><span>0 min</span><span>9</span><span>18+ min</span></div>`
+      + `<p class="micro hexnote">⬢ Hexagón = obytná oblasť. Farba = čas pešo k najbližšej ${CAT_META[catLens].label.toLowerCase()}.</p>`;
   } else {
     el.innerHTML = `<div class="legend-bar legend-bar-a"></div>`
       + `<div class="legend-ticks"><span>slabá</span><span>dobrá</span><span>špička</span></div>`
+      + `<p class="micro hexnote">⬢ Každý <b>hexagón = obytná oblasť</b> (~200 m). Výška a farba = koľko zo 7 potrieb máš do 15 min. <b>Klikni naň</b> pre rozbor.</p>`
       + `<div class="legend-cats" id="legend-cats">${CAT_ORDER.map(c => {
           const m = CAT_META[c];
           const off = activeCats.has(c) ? '' : ' off';
@@ -360,6 +389,77 @@ function renderLegend() {
       applyAmenityFilter();
     }));
   }
+}
+
+/* ---------- onboarding ---------- */
+function showIntro(grid) {
+  const cells = (grid && grid.features) || [];
+  const good = cells.filter(f => (f.properties.sc || 0) >= 6).length;
+  const poor = cells.filter(f => (f.properties.sc || 0) <= 3).length;
+  if (cells.length) {
+    document.getElementById('intro-good').textContent = Math.round(100 * good / cells.length) + ' %';
+    document.getElementById('intro-poor').textContent = Math.round(100 * poor / cells.length) + ' %';
+  }
+  document.getElementById('intro').hidden = false;
+}
+
+/* ---------- šošovka po kategórii ---------- */
+const MIN_RAMP = [0, '#34c47a', 4, '#8ec85a', 7, '#d8c84a', 10, '#e6a13c', 13, '#e0603b', 18, '#c0392b'];
+function gridColorExpr() {
+  return catLens
+    ? ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP]
+    : ['interpolate', ['linear'], ['get', 'idx'], ...ACCESS_RAMP];
+}
+function buildCatLens() {
+  const wrap = document.getElementById('catlens');
+  wrap.innerHTML = '<button data-cat="" class="active">Celkovo</button>'
+    + CAT_ORDER.map(c => `<button data-cat="${c}" title="${CAT_META[c].label}">${CAT_META[c].emoji}</button>`).join('');
+  wrap.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setCatLens(b.dataset.cat)));
+}
+function setCatLens(cat) {
+  catLens = cat;
+  document.querySelectorAll('#catlens button').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-extrusion-color', gridColorExpr());
+  const hint = document.getElementById('catlens-hint');
+  if (cat) {
+    const m = CAT_META[cat];
+    hint.innerHTML = `Farba hexa = <b>minúty pešo k najbližšej (${m.label.toLowerCase()})</b>. `
+      + `Zelená blízko, červená ďaleko — <b>mapa „kde chýba ${m.label.toLowerCase()}".</b>`;
+    if (lens === 'access') renderLegend();
+  } else {
+    hint.innerHTML = 'Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b> — mapa „kde chýba".';
+    if (lens === 'access') renderLegend();
+  }
+}
+
+/* ---------- zistenia ---------- */
+function buildFindings(grid) {
+  const cells = (grid && grid.features) || [];
+  if (!cells.length) return;
+  const n = cells.length;
+  // pokrytie po kategóriách: % hexov, kde je daná potreba do dochádzkového času
+  const cov = {};
+  for (const c of CAT_ORDER) {
+    const budget = Math.round(CAT_META[c].rad * 1.3 / 80);   // minúty zodpovedajúce polomeru
+    cov[c] = cells.filter(f => (f.properties['m_' + c] ?? 99) <= budget).length / n;
+  }
+  const sorted = CAT_ORDER.slice().sort((a, b) => cov[a] - cov[b]);
+  const worst = sorted[0], best = sorted[sorted.length - 1];
+  const good = cells.filter(f => (f.properties.sc || 0) >= 6).length;
+
+  const bars = CAT_ORDER.map(c => {
+    const pct = Math.round(100 * cov[c]);
+    return `<div class="fbar"><span class="fb-l">${CAT_META[c].emoji} ${CAT_META[c].label}</span>`
+      + `<span class="fb-track"><i style="width:${pct}%;background:${CAT_META[c].color}"></i></span>`
+      + `<span class="fb-v">${pct}%</span></div>`;
+  }).join('');
+
+  document.getElementById('findings').innerHTML =
+    `<div class="fcard"><b>${Math.round(100 * good / n)} %</b> obytných oblastí má 6+/7 potrieb do 15 minút.</div>`
+    + `<div class="fcard warn">Najhoršie dostupné v meste: <b>${CAT_META[worst].label.toLowerCase()}</b> `
+    + `(len ${Math.round(100 * cov[worst])} % oblastí). Najlepšie: <b>${CAT_META[best].label.toLowerCase()}</b>.</div>`
+    + `<div class="fbars-title">Podiel obytných oblastí s dostupnosťou:</div>`
+    + `<div class="fbars">${bars}</div>`;
 }
 
 /* ---------- 15-min klik analýza ---------- */
@@ -551,6 +651,11 @@ function wireUI() {
 
   // landmarks are DOM markers, not map layers
   document.getElementById('t-landmarks').addEventListener('change', (e) => showLandmarks(e.target.checked));
+
+  // onboarding
+  const intro = document.getElementById('intro');
+  document.getElementById('intro-explore').addEventListener('click', () => intro.hidden = true);
+  document.getElementById('intro-tour').addEventListener('click', () => { intro.hidden = true; playTour(); });
 
   // karta pamiatky — zatvorenie + akcia
   document.getElementById('lmcard-close').addEventListener('click', closeLandmarkCard);

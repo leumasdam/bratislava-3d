@@ -52,6 +52,16 @@
         </div>
       </section>
 
+      <section class="block only-access" id="block-catlens">
+        <div class="block-head">
+          <h2>Dostupnosť ku konkrétnej potrebe</h2>
+        </div>
+        <div class="catlens" id="catlens">
+          <button data-cat="" class="active">Celkovo</button>
+        </div>
+        <p class="micro" id="catlens-hint">Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b> — mapa „kde chýba".</p>
+      </section>
+
       <section class="block">
         <div class="block-head">
           <h2 id="legend-title">Index dostupnosti</h2>
@@ -72,6 +82,11 @@
       <section class="block only-access" id="block-weak">
         <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni slabé miesta (≤5/7)</span></label>
         <p class="micro">Stlmí dobre obslúžené budovy a vytiahne pukliny v dostupnosti — aj v jadre ich pár je.</p>
+      </section>
+
+      <section class="block only-access" id="block-findings">
+        <div class="block-head"><h2>Zistenia</h2></div>
+        <div class="findings" id="findings"></div>
       </section>
 
       <section class="block only-height" id="block-hfilter">
@@ -157,6 +172,32 @@
         </div>
         <div class="lmcard-src" id="lmcard-src"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- uvítací úvod / onboarding -->
+  <div class="intro" id="intro" hidden>
+    <div class="intro-card">
+      <div class="intro-kicker">Dátová vizualizácia · otvorené dáta</div>
+      <h2 class="intro-title">Je Bratislava 15-minútové mesto?</h2>
+      <p class="intro-lead">
+        Dobré miesto na život má <b>školu, škôlku, lekára, lekáreň, obchod, zastávku a park</b>
+        pešo do 15 minút. Táto mapa to počíta pre obytné územie celého mesta z otvorených dát.
+      </p>
+      <div class="intro-stats">
+        <div class="is"><b id="intro-good">58 %</b><span>oblastí je v 15-min meste</span></div>
+        <div class="is"><b id="intro-poor">24 %</b><span>je autozávislých</span></div>
+      </div>
+      <div class="intro-how">
+        <div class="ih"><span>⬢</span> Každý <b>hexagón</b> = obytná oblasť. Výška a farba = dostupnosť.</div>
+        <div class="ih"><span>👆</span> <b>Klikni kamkoľvek</b> a zisti, čo tam máš do 15 minút.</div>
+        <div class="ih"><span>🎬</span> Alebo spusti <b>sprievodcu</b> a mesto ti to ukáže.</div>
+      </div>
+      <div class="intro-actions">
+        <button class="btn btn-primary" id="intro-explore">Preskúmať mesto</button>
+        <button class="btn btn-ghost wide" id="intro-tour">▶ Spustiť prehliadku</button>
+      </div>
+      <div class="intro-src">Dáta © OpenStreetMap (ODbL) · MapLibre · bez API kľúča</div>
     </div>
   </div>
 

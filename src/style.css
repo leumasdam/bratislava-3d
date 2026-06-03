@@ -218,6 +218,58 @@ body.touring .lm-area{opacity:.22}
 .legend-cats .lc{cursor:pointer;transition:opacity .15s,color .15s}
 .legend-cats .lc:hover{color:var(--ink)}
 .legend-cats .lc.off{opacity:.32;text-decoration:line-through}
+.legend-bar-m{background:linear-gradient(90deg,#34c47a,#8ec85a,#d8c84a,#e6a13c,#e0603b,#c0392b)}
+.hexnote{margin:9px 0 0;padding:8px 10px;background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:8px;line-height:1.5}
+
+/* šošovka po kategórii */
+.catlens{display:flex;gap:5px;flex-wrap:wrap}
+.catlens button{flex:none;min-width:34px;height:32px;padding:0 9px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--ink-dim);font-size:15px;cursor:pointer;font-family:inherit;
+  transition:.15s;display:flex;align-items:center;justify-content:center}
+.catlens button[data-cat=""]{font-size:12.5px;font-weight:600}
+.catlens button:hover{background:rgba(255,255,255,.1);color:var(--ink)}
+.catlens button.active{background:var(--accent);border-color:var(--accent);color:#06231f}
+
+/* zistenia */
+.findings{display:flex;flex-direction:column;gap:9px}
+.fcard{font-size:12.5px;line-height:1.5;color:var(--ink-dim);background:rgba(255,255,255,.035);
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+.fcard b{color:var(--ink)}
+.fcard.warn{border-left:2px solid var(--accent-warm)}
+.fcard.warn b{color:var(--accent-warm)}
+.fbars-title{font-size:11px;color:var(--ink-faint);margin-top:3px;letter-spacing:.2px}
+.fbars{display:flex;flex-direction:column;gap:5px}
+.fbar{display:flex;align-items:center;gap:8px;font-size:11.5px}
+.fbar .fb-l{flex:none;width:96px;color:var(--ink-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fbar .fb-track{flex:1;height:7px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden}
+.fbar .fb-track i{display:block;height:100%;border-radius:4px}
+.fbar .fb-v{flex:none;width:32px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* ---------- onboarding ---------- */
+.intro{position:fixed;inset:0;z-index:25;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(120% 100% at 50% 30%,rgba(10,16,24,.72),rgba(5,7,12,.92));backdrop-filter:blur(6px)}
+.intro[hidden]{display:none}
+.intro-card{width:min(500px,94vw);background:var(--glass-2);backdrop-filter:blur(22px);
+  border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:30px 32px 24px;
+  animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+.intro-kicker{font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:var(--accent);margin-bottom:12px}
+.intro-title{font-family:"Space Grotesk";font-size:27px;font-weight:600;line-height:1.12;margin:0 0 14px;letter-spacing:-.4px}
+.intro-lead{font-size:14px;line-height:1.6;color:var(--ink-dim);margin:0 0 20px}
+.intro-stats{display:flex;gap:12px;margin-bottom:20px}
+.intro-stats .is{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:14px}
+.intro-stats .is b{display:block;font-family:"Space Grotesk";font-size:26px;color:var(--accent);line-height:1}
+.intro-stats .is:last-child b{color:var(--accent-warm)}
+.intro-stats .is span{font-size:11.5px;color:var(--ink-dim);display:block;margin-top:5px;line-height:1.35}
+.intro-how{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+.intro-how .ih{display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--ink-dim);line-height:1.45}
+.intro-how .ih span{font-size:15px;flex:none;width:20px;text-align:center}
+.intro-how .ih b{color:var(--ink)}
+.intro-actions{display:flex;gap:10px;margin-bottom:16px}
+.btn.wide{flex:1;white-space:nowrap}
+.intro-src{font-size:10.5px;color:var(--ink-faint);text-align:center}
+@media (max-width:760px){
+  .intro-title{font-size:22px}.intro-actions{flex-direction:column}.btn.wide{width:100%}
+}
 
 /* ---------- inspector ---------- */
 .inspector{position:absolute;right:18px;bottom:18px;z-index:7;width:268px;

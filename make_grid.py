@@ -109,16 +109,20 @@ hist = [0] * 8
 for (x, y) in hexes:
     sc = 0
     contrib = 0.0
+    props = {}
     for c in CATS:
         d = nearest(x, y, c)
         if d <= RADIUS_M[c]:
             sc += 1
         contrib += max(0.0, 1.0 - (d / WALK_MPM) / T_FULL)
+        props["m_" + c] = min(30, round(d * 1.3 / WALK_MPM))   # min pešo (×1,3 detour), cap 30
     idx = round(100 * contrib / len(CATS))
+    props["sc"] = sc
+    props["idx"] = idx
     hist[sc] += 1
     feats.append({"type": "Feature",
         "geometry": {"type": "Polygon", "coordinates": [hex_ring(x, y)]},
-        "properties": {"sc": sc, "idx": idx}})
+        "properties": props})
 
 path = os.path.join(OUT, "grid.geojson")
 json.dump({"type": "FeatureCollection", "features": feats},

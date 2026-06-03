@@ -47,6 +47,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   // wait for the app to signal ready
   try { await page.waitForFunction('window.__ready === true', { timeout: 45000 }); }
   catch (e) { console.log('!! __ready never set'); }
+  await page.evaluate(() => { const i = document.getElementById('intro'); if (i) i.hidden = true; });
   await sleep(2500); // let tiles/extrusion settle
 
   const stats = await page.evaluate(() => {
