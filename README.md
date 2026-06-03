@@ -25,6 +25,16 @@ Každý hexagón obytného územia má skóre 0–100 v šiestich nezávislých 
 Spoja sa do **Indexu kvality miesta** — a **posuvníkmi váh** si zvolíš, čo je
 pre teba dôležité (mesto sa prepočíta naživo). Klik na hex ukáže celý jeho profil.
 
+## AI asistent „Spýtaj sa mesta"
+
+Prirodzeným jazykom sa spýtaš a dáta odpovedia + **zvýraznia mapu**: *„kde chýba
+najviac lekárov?"*, *„kam postaviť škôlku, nech pomôže najviac ľuďom?"*, *„ako je
+Bratislava oproti iným mestám?"*. Pod kapotou **Claude API (tool use)** — model
+prekladá otázku na volania dátových nástrojov nad atlasom a interpretuje výsledok.
+
+- Beží **priamo v prehliadači** (bring-your-own Claude API kľúč, ostáva len lokálne).
+- **Bez kľúča** funguje demo s príkladovými otázkami, ktoré reálne dopytujú dáta.
+
 ## Porovnanie miest
 
 Tá istá 15-min metóda spustená pre 5 stredoeurópskych miest (každé vlastný agent):

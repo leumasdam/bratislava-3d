@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas5" rel="stylesheet" />
+<link href="src/style.css?v=atlas6" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -178,6 +178,46 @@
     </div>
   </div>
 
+  <!-- AI asistent „Spýtaj sa mesta" -->
+  <button class="ask-fab" id="ask-fab" aria-label="Spýtaj sa mesta">
+    <span class="ask-fab-ic">✦</span><span class="ask-fab-tx">Spýtaj sa mesta</span>
+  </button>
+  <div class="ask" id="ask" hidden>
+    <div class="ask-head">
+      <div class="ask-title"><span>✦</span> Spýtaj sa mesta</div>
+      <div class="ask-head-act">
+        <button id="ask-key" title="Nastaviť Claude API kľúč">🔑</button>
+        <button id="ask-close" aria-label="Zavrieť">×</button>
+      </div>
+    </div>
+    <div class="ask-body" id="ask-body">
+      <div class="ask-msg bot">Pýtaj sa na kvalitu života v Bratislave — dáta ti odpoviem a zvýrazním na mape. Skús niektorú otázku:</div>
+      <div class="ask-examples" id="ask-examples"></div>
+    </div>
+    <form class="ask-input" id="ask-form">
+      <input id="ask-text" type="text" autocomplete="off" placeholder="Napíš otázku o meste…" />
+      <button type="submit" id="ask-send" aria-label="Poslať">→</button>
+    </form>
+    <div class="ask-foot" id="ask-foot">Demo režim — pre voľné otázky pridaj svoj Claude API kľúč 🔑</div>
+  </div>
+
+  <!-- modál na zadanie API kľúča -->
+  <div class="keymodal" id="keymodal" hidden>
+    <div class="keymodal-back" id="keymodal-back"></div>
+    <div class="keymodal-card">
+      <button class="lmcard-close" id="keymodal-close">×</button>
+      <div class="lmcard-kicker">✦ AI asistent</div>
+      <h3 class="keymodal-h">Claude API kľúč</h3>
+      <p class="keymodal-p">Pre voľné otázky v prirodzenom jazyku vlož svoj <b>Anthropic API kľúč</b>. Ostáva <b>len v tvojom prehliadači</b> (localStorage), nikam sa neposiela ani neukladá na server.</p>
+      <input id="keymodal-input" type="password" placeholder="sk-ant-…" />
+      <div class="keymodal-act">
+        <button class="btn btn-primary" id="keymodal-save">Uložiť kľúč</button>
+        <button class="btn btn-ghost" id="keymodal-clear">Vymazať</button>
+      </div>
+      <p class="keymodal-note">Tip: získaš ho na console.anthropic.com. Bez kľúča funguje demo s príkladovými otázkami.</p>
+    </div>
+  </div>
+
   <!-- uvítací úvod / onboarding -->
   <div class="intro" id="intro" hidden>
     <div class="intro-card">
@@ -212,6 +252,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas5"></script>
+  <script src="src/app.js?v=atlas6"></script>
 </body>
 </html>

@@ -21,13 +21,13 @@ const ACCESS_RAMP = [
 const ACCESS_STOPS = ['#3a1d52','#7a2a6e','#b83a63','#e35a54','#f57c3d','#f7a83b','#d7df58','#37e0b0'];
 /* ---- kategórie dennej vybavenosti (poradie = riadky v karte) ---- */
 const CAT_META = {
-  obchod:  { emoji:'🛒', label:'Obchod',   color:'#5dade2', rad:700  },
-  zastavka:{ emoji:'🚏', label:'Zastávka', color:'#58d68d', rad:400  },
-  lekaren: { emoji:'💊', label:'Lekáreň',  color:'#bb8fce', rad:700  },
-  lekar:   { emoji:'🩺', label:'Lekár',    color:'#ec7063', rad:1000 },
-  skola:   { emoji:'🏫', label:'Škola',    color:'#f4d03f', rad:1000 },
-  skolka:  { emoji:'🧸', label:'Škôlka',   color:'#f5b041', rad:800  },
-  park:    { emoji:'🌳', label:'Park',     color:'#45b39d', rad:500  },
+  obchod:  { emoji:'🛒', label:'Obchod',   acc:'obchod',   color:'#5dade2', rad:700  },
+  zastavka:{ emoji:'🚏', label:'Zastávka', acc:'zastávku', color:'#58d68d', rad:400  },
+  lekaren: { emoji:'💊', label:'Lekáreň',  acc:'lekáreň',  color:'#bb8fce', rad:700  },
+  lekar:   { emoji:'🩺', label:'Lekár',    acc:'lekára',   color:'#ec7063', rad:1000 },
+  skola:   { emoji:'🏫', label:'Škola',    acc:'školu',    color:'#f4d03f', rad:1000 },
+  skolka:  { emoji:'🧸', label:'Škôlka',   acc:'škôlku',   color:'#f5b041', rad:800  },
+  park:    { emoji:'🌳', label:'Park',     acc:'park',     color:'#45b39d', rad:500  },
 };
 const CAT_ORDER = ['obchod','zastavka','lekaren','lekar','skola','skolka','park'];
 /* ---- Atlas kvality života: 6 rozmerov + kompozit ---- */
@@ -308,6 +308,7 @@ map.on('load', async () => {
   buildFindings(grid);
   buildCities();
   wireUI();
+  wireAsk();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
   showIntro(grid);
 
@@ -608,6 +609,214 @@ function buildCities() {
       + `<span class="cc-track"><i style="width:${w}%"></i></span>`
       + `<span class="cc-v">${c.good.toFixed(0)} %</span></div>`;
   }).join('');
+}
+
+/* ========== AI asistent „Spýtaj sa mesta" ========== */
+const ASK_MODEL = 'claude-haiku-4-5-20251001';
+const ASK_SYSTEM = `Si asistent mestského Atlasu kvality života Bratislavy. Máš dáta o 350 obytných oblastiach (hexoch), každá so skóre 0–100 v 6 rozmeroch: dostupnosť (15-min), zeleň, tepelný komfort, MHD, chodci, pokoj; + kompozitný index kvality; + populácia na oblasť; + porovnanie s Viedňou/Prahou/Brnom/Budapešťou. Keď sa používateľ pýta, ZAVOLAJ vhodný nástroj a potom stručne (1–3 vety) po slovensky interpretuj výsledok. Buď konkrétny, používaj čísla. Ak otázka nesúvisí s mestom/dátami, slušne to povedz.`;
+
+function nearestLandmarkName(ll) {
+  let best = '', bd = Infinity;
+  for (const lm of LANDMARKS) {
+    if (lm.t !== 'pin') continue;
+    const d = haversineM(ll, lm.at);
+    if (d < bd) { bd = d; best = lm.name; }
+  }
+  return best;
+}
+function gMean(key) {
+  const fs = gridData.features;
+  return fs.reduce((s, f) => s + (f.properties[key] || 0), 0) / fs.length;
+}
+function topHexes(key, order, n) {
+  const fs = gridData.features.map((f, i) => ({ i, v: f.properties[key] || 0, c: hexCentroids[i] }));
+  fs.sort((a, b) => order === 'top' ? b.v - a.v : a.v - b.v);
+  return fs.slice(0, n);
+}
+
+const ASK_TOOLS = {
+  prehlad_kvality: {
+    desc: 'Celkový prehľad kvality života: priemerné skóre 6 rozmerov, najslabší a najsilnejší rozmer.',
+    schema: { type: 'object', properties: {} },
+    run() {
+      const dims = WEIGHTED.map(id => ({ id, m: gMean(META[id].key) })).sort((a, b) => a.m - b.m);
+      const w = dims[0], b = dims[dims.length - 1];
+      return { text: `Priemerný index kvality je ${Math.round(gMean('q_index'))}/100. Najsilnejší rozmer mesta je ${META[b.id].label.toLowerCase()} (⌀ ${Math.round(b.m)}), najslabší ${META[w.id].label.toLowerCase()} (⌀ ${Math.round(w.m)}).`,
+        effect: { indicator: w.id } };
+    },
+  },
+  kde_chyba: {
+    desc: 'Kde v meste majú ľudia najhoršiu pešiu dostupnosť konkrétnej dennej potreby.',
+    schema: { type: 'object', properties: { kategoria: { type: 'string', enum: CAT_ORDER, description: 'obchod|zastavka|lekaren|lekar|skola|skolka|park' } }, required: ['kategoria'] },
+    run({ kategoria }) {
+      const c = CAT_ORDER.includes(kategoria) ? kategoria : 'lekar';
+      const worst = topHexes('m_' + c, 'top', 3).map(h => nearestLandmarkName(h.c));
+      const budget = CAT_BUDGET[c];
+      const share = Math.round(100 * gridData.features.filter(f => (f.properties['m_' + c] ?? 99) <= budget).length / gridData.features.length);
+      return { text: `Najhoršiu dostupnosť (${CAT_META[c].label}) majú oblasti pri: ${[...new Set(worst)].join(', ')}. Túto potrebu má do 15 min pešo len ${share} % obytných oblastí.`,
+        effect: { catLens: c } };
+    },
+  },
+  rebricek_oblasti: {
+    desc: 'Najlepšie alebo najhoršie oblasti podľa zvoleného rozmeru kvality.',
+    schema: { type: 'object', properties: {
+      rozmer: { type: 'string', enum: ['index', ...WEIGHTED] },
+      poradie: { type: 'string', enum: ['najlepsie', 'najhorsie'] } }, required: ['rozmer', 'poradie'] },
+    run({ rozmer, poradie }) {
+      const id = (rozmer === 'index' || WEIGHTED.includes(rozmer)) ? rozmer : 'index';
+      const key = id === 'index' ? 'q_index' : META[id].key;
+      const order = poradie === 'najlepsie' ? 'top' : 'bottom';
+      const hx = topHexes(key, order, 3);
+      const names = [...new Set(hx.map(h => nearestLandmarkName(h.c)))];
+      const lbl = id === 'index' ? 'index kvality' : META[id].label.toLowerCase();
+      return { text: `${poradie === 'najlepsie' ? 'Najlepšie' : 'Najhoršie'} oblasti podľa ${lbl}: ${names.join(', ')} (skóre ${Math.round(hx[0].v)}–${Math.round(hx[hx.length-1].v)}).`,
+        effect: { indicator: id, flyTo: [hx[0].c[0], hx[0].c[1], 13] } };
+    },
+  },
+  porovnanie_miest: {
+    desc: 'Porovnanie Bratislavy s Viedňou, Prahou, Brnom a Budapešťou (% oblastí v 15-min meste).',
+    schema: { type: 'object', properties: {} },
+    run() {
+      const r = CITIES.map(c => `${c.city} ${c.good.toFixed(0)} %`).join(', ');
+      return { text: `Podiel obytných oblastí s 6+/7 potrebami do 15 min: ${r}. Bratislava (56 %) je 4. z 5 — za Viedňou, Prahou aj Budapešťou, no pred Brnom.`, effect: null };
+    },
+  },
+  najlepsie_miesto: {
+    desc: 'Kam postaviť novú vybavenosť, aby získala dostupnosť pre najviac obyvateľov.',
+    schema: { type: 'object', properties: { kategoria: { type: 'string', enum: CAT_ORDER } }, required: ['kategoria'] },
+    run({ kategoria }) {
+      const c = CAT_ORDER.includes(kategoria) ? kategoria : 'skolka';
+      const budget = CAT_BUDGET[c];
+      let best = null, gain = -1;
+      for (let k = 0; k < hexCentroids.length; k++) {
+        if ((gridData.features[k].properties.pop || 0) === 0) continue;
+        let g = 0;
+        for (let i = 0; i < gridData.features.length; i++) {
+          const p = gridData.features[i].properties;
+          if ((p.pop || 0) === 0 || (p['m_' + c] ?? 30) <= budget) continue;
+          if (Math.round(haversineM(hexCentroids[i], hexCentroids[k]) * 1.3 / 80) <= budget) g += p.pop;
+        }
+        if (g > gain) { gain = g; best = hexCentroids[k]; }
+      }
+      return { text: `Najlepšie miesto pre ${CAT_META[c].acc} je pri ${nearestLandmarkName(best)} — dostupnosť by vďaka tomu získalo ~${gain.toLocaleString('sk')} obyvateľov.`,
+        effect: { optimize: c } };
+    },
+  },
+};
+
+function applyAskEffect(e) {
+  if (!e) return;
+  if (e.indicator) setIndicator(e.indicator);
+  if (e.catLens) { setIndicator('access'); setCatLens(e.catLens); }
+  if (e.flyTo) map.flyTo({ center: [e.flyTo[0], e.flyTo[1]], zoom: e.flyTo[2] || 13, duration: 1600, essential: true });
+  if (e.optimize) {
+    if (!plannerOn) { document.getElementById('t-planner').checked = true; document.getElementById('t-planner').dispatchEvent(new Event('change')); }
+    placeType = e.optimize; buildPlanner(); runOptimizer(e.optimize);
+  }
+}
+
+const ASK_EXAMPLES = [
+  { q: 'Aký je celkový obraz kvality života?', tool: 'prehlad_kvality', args: {} },
+  { q: 'Kde v meste chýba najviac lekárov?', tool: 'kde_chyba', args: { kategoria: 'lekar' } },
+  { q: 'Ktoré oblasti sú najhoršie na bývanie?', tool: 'rebricek_oblasti', args: { rozmer: 'index', poradie: 'najhorsie' } },
+  { q: 'Ako je Bratislava oproti iným mestám?', tool: 'porovnanie_miest', args: {} },
+  { q: 'Kam postaviť škôlku, nech pomôže najviac ľuďom?', tool: 'najlepsie_miesto', args: { kategoria: 'skolka' } },
+];
+
+function askAddMsg(role, html) {
+  const body = document.getElementById('ask-body');
+  const d = document.createElement('div');
+  d.className = 'ask-msg ' + role;
+  d.innerHTML = html;
+  body.appendChild(d);
+  body.scrollTop = body.scrollHeight;
+  return d;
+}
+function runDemoTool(tool, args) {
+  const out = ASK_TOOLS[tool].run(args);
+  askAddMsg('bot', out.text);
+  applyAskEffect(out.effect);
+}
+async function askClaude(question) {
+  const key = localStorage.getItem('anthropic_key');
+  const thinking = askAddMsg('bot thinking', '<span class="dots"><i></i><i></i><i></i></span>');
+  try {
+    const tools = Object.entries(ASK_TOOLS).map(([name, t]) => ({ name, description: t.desc, input_schema: t.schema }));
+    let messages = [{ role: 'user', content: question }];
+    let finalText = '';
+    for (let step = 0; step < 4; step++) {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key,
+          'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: ASK_MODEL, max_tokens: 600, system: ASK_SYSTEM, tools, messages }),
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error.message || 'API chyba');
+      const toolUses = (data.content || []).filter(b => b.type === 'tool_use');
+      finalText = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join(' ');
+      if (data.stop_reason === 'tool_use' && toolUses.length) {
+        messages.push({ role: 'assistant', content: data.content });
+        const results = [];
+        for (const tu of toolUses) {
+          const t = ASK_TOOLS[tu.name];
+          if (t) { const out = t.run(tu.input || {}); applyAskEffect(out.effect); results.push({ type: 'tool_result', tool_use_id: tu.id, content: out.text }); }
+          else results.push({ type: 'tool_result', tool_use_id: tu.id, content: 'neznámy nástroj' });
+        }
+        messages.push({ role: 'user', content: results });
+        continue;
+      }
+      break;
+    }
+    thinking.remove();
+    askAddMsg('bot', finalText || 'Nemám k tomu dáta.');
+  } catch (err) {
+    thinking.remove();
+    askAddMsg('bot err', 'Chyba: ' + err.message + ' — skontroluj API kľúč (🔑).');
+  }
+}
+
+function wireAsk() {
+  const fab = document.getElementById('ask-fab');
+  const panel = document.getElementById('ask');
+  const ex = document.getElementById('ask-examples');
+  ex.innerHTML = ASK_EXAMPLES.map((e, i) => `<button data-i="${i}">${e.q}</button>`).join('');
+  ex.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const e = ASK_EXAMPLES[+b.dataset.i];
+    askAddMsg('user', e.q);
+    if (localStorage.getItem('anthropic_key')) askClaude(e.q);
+    else runDemoTool(e.tool, e.args);
+  }));
+  fab.addEventListener('click', () => { panel.hidden = false; fab.style.display = 'none'; refreshAskFoot(); });
+  document.getElementById('ask-close').addEventListener('click', () => { panel.hidden = true; fab.style.display = ''; });
+  document.getElementById('ask-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const inp = document.getElementById('ask-text');
+    const q = inp.value.trim(); if (!q) return; inp.value = '';
+    askAddMsg('user', q);
+    if (localStorage.getItem('anthropic_key')) askClaude(q);
+    else askAddMsg('bot', 'Voľné otázky potrebujú Claude API kľúč 🔑. Zatiaľ skús príkladové otázky vyššie — tie fungujú aj bez kľúča.');
+  });
+  // key modal
+  const km = document.getElementById('keymodal');
+  const openKm = () => { km.hidden = false; document.getElementById('keymodal-input').value = localStorage.getItem('anthropic_key') || ''; };
+  document.getElementById('ask-key').addEventListener('click', openKm);
+  document.getElementById('keymodal-close').addEventListener('click', () => km.hidden = true);
+  document.getElementById('keymodal-back').addEventListener('click', () => km.hidden = true);
+  document.getElementById('keymodal-save').addEventListener('click', () => {
+    const v = document.getElementById('keymodal-input').value.trim();
+    if (v) localStorage.setItem('anthropic_key', v); km.hidden = true; refreshAskFoot();
+    askAddMsg('bot', '✓ Kľúč uložený — teraz sa môžeš pýtať voľne, prirodzeným jazykom.');
+  });
+  document.getElementById('keymodal-clear').addEventListener('click', () => {
+    localStorage.removeItem('anthropic_key'); km.hidden = true; refreshAskFoot();
+  });
+  refreshAskFoot();
+}
+function refreshAskFoot() {
+  const has = !!localStorage.getItem('anthropic_key');
+  const foot = document.getElementById('ask-foot');
+  if (foot) foot.innerHTML = has ? '🟢 Pripojené na Claude — pýtaj sa voľne.' : 'Demo režim — pre voľné otázky pridaj svoj Claude API kľúč 🔑';
 }
 
 /* ---------- Atlas runtime + plánovacie pieskovisko ---------- */

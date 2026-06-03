@@ -325,6 +325,66 @@ body.planning .maplibregl-canvas{cursor:crosshair}
 .crow.me .cc-track i{background:var(--accent)}
 .crow.me .cc-v{color:var(--accent);font-weight:600}
 
+/* ---------- AI asistent „Spýtaj sa mesta" ---------- */
+.ask-fab{position:absolute;right:18px;bottom:18px;z-index:8;display:flex;align-items:center;gap:9px;
+  padding:12px 18px;border-radius:999px;border:1px solid rgba(55,224,176,.4);cursor:pointer;
+  background:linear-gradient(180deg,rgba(55,224,176,.18),rgba(55,224,176,.08)),var(--glass-2);
+  backdrop-filter:blur(16px);color:var(--ink);font-family:inherit;font-size:13.5px;font-weight:600;
+  box-shadow:0 10px 30px -8px rgba(55,224,176,.4),var(--shadow);transition:.18s}
+.ask-fab:hover{transform:translateY(-2px);box-shadow:0 16px 38px -8px rgba(55,224,176,.55),var(--shadow)}
+.ask-fab-ic{font-size:16px;color:var(--accent)}
+.ask{position:absolute;right:18px;bottom:18px;z-index:9;width:360px;max-width:calc(100vw - 36px);
+  height:min(520px,72vh);display:flex;flex-direction:column;overflow:hidden;
+  background:var(--glass-2);backdrop-filter:blur(24px) saturate(1.2);border:1px solid var(--line);
+  border-radius:18px;box-shadow:var(--shadow);animation:rise .3s cubic-bezier(.2,.8,.2,1)}
+.ask[hidden]{display:none}
+.ask::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(55,224,176,.5),transparent)}
+.ask-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.ask-title{font-family:"Space Grotesk";font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.ask-title span{color:var(--accent)}
+.ask-head-act{display:flex;gap:4px}
+.ask-head-act button{background:none;border:0;color:var(--ink-faint);font-size:16px;cursor:pointer;width:30px;height:30px;border-radius:8px;transition:.15s}
+.ask-head-act button:hover{background:rgba(255,255,255,.08);color:var(--ink)}
+.ask-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin}
+.ask-msg{font-size:13px;line-height:1.5;padding:10px 13px;border-radius:13px;max-width:88%}
+.ask-msg.bot{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink-dim);align-self:flex-start;border-bottom-left-radius:4px}
+.ask-msg.bot b{color:var(--ink)}
+.ask-msg.user{background:var(--accent);color:var(--accent-ink);align-self:flex-end;border-bottom-right-radius:4px;font-weight:500}
+.ask-msg.err{border-color:rgba(255,122,69,.4);color:var(--accent-warm)}
+.ask-msg.thinking{padding:13px}
+.ask-msg .dots{display:flex;gap:4px}
+.ask-msg .dots i{width:6px;height:6px;border-radius:50%;background:var(--ink-faint);animation:bounce 1s infinite}
+.ask-msg .dots i:nth-child(2){animation-delay:.15s}.ask-msg .dots i:nth-child(3){animation-delay:.3s}
+.ask-examples{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+.ask-examples button{text-align:left;background:rgba(55,224,176,.07);border:1px solid rgba(55,224,176,.18);
+  color:var(--ink-dim);font-family:inherit;font-size:12.5px;padding:9px 12px;border-radius:10px;cursor:pointer;transition:.15s}
+.ask-examples button:hover{background:rgba(55,224,176,.14);color:var(--ink);border-color:rgba(55,224,176,.4)}
+.ask-input{display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--line)}
+.ask-input input{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;
+  padding:10px 13px;color:var(--ink);font-family:inherit;font-size:13px;outline:none}
+.ask-input input:focus{border-color:rgba(55,224,176,.5)}
+.ask-input button{flex:none;width:40px;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);
+  font-size:17px;cursor:pointer;font-weight:700}
+.ask-foot{padding:0 16px 12px;font-size:10.5px;color:var(--ink-faint);text-align:center}
+
+/* key modal */
+.keymodal{position:fixed;inset:0;z-index:31;display:flex;align-items:center;justify-content:center;padding:24px}
+.keymodal[hidden]{display:none}
+.keymodal-back{position:absolute;inset:0;background:rgba(4,6,10,.62);backdrop-filter:blur(3px)}
+.keymodal-card{position:relative;width:min(420px,92vw);background:var(--glass-2);backdrop-filter:blur(22px);
+  border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:26px 26px 22px;animation:rise .3s cubic-bezier(.2,.8,.2,1)}
+.keymodal-h{font-family:"Space Grotesk";font-size:20px;font-weight:600;margin:6px 0 10px}
+.keymodal-p{font-size:13px;line-height:1.55;color:var(--ink-dim);margin:0 0 16px}
+.keymodal-p b{color:var(--ink)}
+.keymodal-card input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;
+  padding:11px 13px;color:var(--ink);font-family:inherit;font-size:13px;outline:none;margin-bottom:14px}
+.keymodal-card input:focus{border-color:rgba(55,224,176,.5)}
+.keymodal-act{display:flex;gap:9px;margin-bottom:12px}
+.keymodal-act .btn-primary{flex:1}
+.keymodal-note{font-size:11px;color:var(--ink-faint);line-height:1.5;margin:0}
+@media (max-width:760px){ .ask{right:10px;left:10px;width:auto;bottom:10px} .ask-fab{right:10px;bottom:10px} }
+
 /* ---------- onboarding ---------- */
 .intro{position:fixed;inset:0;z-index:25;display:flex;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(120% 100% at 50% 30%,rgba(10,16,24,.72),rgba(5,7,12,.92));backdrop-filter:blur(6px)}
