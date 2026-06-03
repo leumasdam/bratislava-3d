@@ -10,6 +10,27 @@ const HEIGHT_RAMP = [
   40, '#bfe27a', 60, '#ffc24b', 90, '#ff7a45', 130, '#ff4d4d',
 ];
 
+/* ---- orientačné body: pin = známe miesto, area = názov štvrte ---- */
+const LANDMARKS = [
+  { t:'pin',  icon:'🏰', name:'Bratislavský hrad',     at:[17.1003,48.1419] },
+  { t:'pin',  icon:'🛸', name:'Most SNP · UFO',          at:[17.1045,48.1383] },
+  { t:'pin',  icon:'⛪', name:'Modrý kostolík',          at:[17.1170,48.1437] },
+  { t:'pin',  icon:'🏛️', name:'Grassalkovičov palác',    at:[17.1106,48.1486] },
+  { t:'pin',  icon:'🎭', name:'SND',                     at:[17.1238,48.1404] },
+  { t:'pin',  icon:'🏢', name:'Eurovea Tower · 168 m',   at:[17.1271,48.1398] },
+  { t:'pin',  icon:'🏙️', name:'Sky Park',                at:[17.1255,48.1446] },
+  { t:'pin',  icon:'🚌', name:'Stanica Nivy',            at:[17.1300,48.1462] },
+  { t:'pin',  icon:'🚉', name:'Hlavná stanica',          at:[17.1065,48.1590] },
+  { t:'pin',  icon:'🗿', name:'Slavín',                  at:[17.0972,48.1531] },
+  { t:'pin',  icon:'🌳', name:'Sad Janka Kráľa',         at:[17.1045,48.1340] },
+  { t:'area', name:'STARÉ MESTO',  at:[17.1085,48.1455] },
+  { t:'area', name:'PETRŽALKA',    at:[17.1075,48.1175] },
+  { t:'area', name:'NOVÉ MESTO',   at:[17.1290,48.1610] },
+  { t:'area', name:'RUŽINOV',      at:[17.1470,48.1530] },
+];
+let lmMarkers = [];
+let focusMarker = null;
+
 /* ---- atmosphere presets ---- */
 const MOODS = {
   day:   { bg:'#0b1018', light:[1.1,0.55,0.4], lightPos:[1.3,120,40], boost:1.0,  fog:'rgba(120,150,170,.0)' },
@@ -123,6 +144,7 @@ map.on('load', async () => {
 
   applyLight('day');
   computeStats(buildings);
+  buildLandmarks();
   wireUI();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
 
@@ -176,44 +198,85 @@ function kindLabel(k) {
   return map[k] || (k || 'budova');
 }
 
+/* ---------- orientačné body (HTML markery) ---------- */
+function buildLandmarks() {
+  for (const lm of LANDMARKS) {
+    const el = document.createElement('div');
+    if (lm.t === 'area') {
+      el.className = 'lm lm-area';
+      el.textContent = lm.name;
+    } else {
+      el.className = 'lm lm-pin';
+      el.innerHTML = `<span class="lm-dot">${lm.icon}</span><span class="lm-label">${lm.name}</span>`;
+    }
+    const m = new maplibregl.Marker({ element: el, anchor: lm.t === 'area' ? 'center' : 'bottom' })
+      .setLngLat(lm.at).addTo(map);
+    m._kind = lm.t;
+    lmMarkers.push(m);
+  }
+  // pri oddialení ukáž len ikonky (názvy by sa prekrývali)
+  const setZoomClass = () => document.body.classList.toggle('zoom-far', map.getZoom() < 14.2);
+  setZoomClass();
+  map.on('zoom', setZoomClass);
+}
+function showLandmarks(v) {
+  document.body.classList.toggle('hide-lm', !v);
+}
+
 /* ---------- guided tour ---------- */
 const TOUR = [
-  { title:'Mesto ako model', center:[17.1105,48.1395], zoom:13.7, pitch:56, bearing:-19,
-    text:'Celá scéna je poskladaná <b>výhradne z otvorených dát</b> — žiadna podkladová mapa. Presne ako fyzický 3D model, len v prehliadači.' },
-  { title:'Bratislavský hrad', center:[17.1006,48.1417], zoom:15.4, pitch:62, bearing:24,
-    text:'Hradný kopec a pod ním <b>nízke historické jadro</b> — Staré Mesto si drží drobnú mierku stáročia.' },
-  { title:'Staré Mesto', center:[17.1135,48.1448], zoom:15.3, pitch:64, bearing:-34,
-    text:'Kompaktná bloková zástavba. Väčšina budov má <b>4–6 podlaží</b> — mestská látka, ktorú dnes urbanisti chránia.' },
-  { title:'Nové veže', center:[17.1235,48.1400], zoom:15.4, pitch:66, bearing:18,
-    text:'Eurovea, Sky Park, Nivy. <b>Najvyššia vrstva ramp</b> — výškové dominanty z posledných rokov, kde mesto rastie nahor.' },
-  { title:'Most SNP a nábrežie', center:[17.1045,48.1385], zoom:15.2, pitch:66, bearing:-46,
-    text:'Dunaj ako os mesta. Na druhom brehu sa začína <b>úplne iná mierka</b>.' },
-  { title:'Petržalka', center:[17.1060,48.1230], zoom:14.3, pitch:58, bearing:8,
-    text:'Panelová „stena“ — jedno z <b>najhustejšie obývaných sídlisk</b> v strednej Európe. Kontrast voči jadru je tu doslova hmatateľný.' },
+  { title:'Mesto ako model', center:[17.1105,48.1395], zoom:13.6, pitch:54, bearing:-19,
+    text:'Celá scéna je poskladaná <b>výhradne z otvorených dát</b> — žiadna podkladová mapa. Presne ako fyzický 3D model, len v prehliadači. Ikonky ukazujú, kde čo je.' },
+  { title:'Bratislavský hrad', focus:[17.1003,48.1419], icon:'🏰', zoom:15.6, pitch:64, bearing:24,
+    text:'Hradný kopec a pod ním <b>nízke historické jadro</b> — Staré Mesto si stáročia drží drobnú mierku.' },
+  { title:'Staré Mesto', focus:[17.1135,48.1445], icon:'🏛️', zoom:15.4, pitch:65, bearing:-34,
+    text:'Kompaktná bloková zástavba, väčšina budov <b>4–6 podlaží</b> — mestská látka, ktorú dnes urbanisti chránia.' },
+  { title:'Eurovea Tower', focus:[17.1271,48.1398], icon:'🏢', zoom:15.7, pitch:66, bearing:18,
+    text:'Najvyššia budova Slovenska — <b>168 m</b>. Spolu so Sky Parkom a Nivami tvorí nové výškové ťažisko mesta.' },
+  { title:'Most SNP · UFO', focus:[17.1045,48.1383], icon:'🛸', zoom:15.4, pitch:67, bearing:-46,
+    text:'Dunaj ako os mesta. Na druhom brehu sa začína <b>úplne iná mierka</b> — Petržalka.' },
+  { title:'Petržalka', focus:[17.1075,48.1210], icon:'🏘️', zoom:14.4, pitch:60, bearing:8,
+    text:'Panelová „stena“ — jedno z <b>najhustejšie obývaných sídlisk</b> v strednej Európe. Kontrast voči jadru je tu hmatateľný.' },
 ];
 let tourIdx = -1, tourPlaying = false, tourTimer = null;
+
+function setFocus(stop) {
+  if (focusMarker) { focusMarker.remove(); focusMarker = null; }
+  if (!stop.focus) return;
+  const el = document.createElement('div');
+  el.className = 'lm-focus';
+  el.innerHTML = `<span class="lm-focus-ring"></span><span class="lm-focus-pin">${stop.icon}</span>`
+    + `<span class="lm-focus-label">${stop.title}</span>`;
+  focusMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+    .setLngLat(stop.focus).addTo(map);
+}
 
 function gotoStop(i, fly = true) {
   tourIdx = (i + TOUR.length) % TOUR.length;
   const s = TOUR[tourIdx];
   document.getElementById('story-title').textContent = s.title;
   document.getElementById('tour-caption').innerHTML = s.text;
-  map[fly ? 'flyTo' : 'jumpTo']({ center: s.center, zoom: s.zoom, pitch: s.pitch,
-    bearing: s.bearing, duration: 2600, essential: true });
+  setFocus(s);
+  map[fly ? 'flyTo' : 'jumpTo']({ center: s.focus || s.center, zoom: s.zoom, pitch: s.pitch,
+    bearing: s.bearing, duration: 3400, curve: 1.5, essential: true });
 }
 function playTour() {
   tourPlaying = true;
-  document.getElementById('tour-play').classList.add('playing');
-  document.getElementById('tour-play').textContent = '⏸ Zastaviť';
+  document.body.classList.add('touring');   // počas auto-prehliadky stlm statické body
+  const b = document.getElementById('tour-play');
+  b.classList.add('playing');
+  b.textContent = '⏸ Zastaviť prehliadku';
   const step = () => {
     gotoStop(tourIdx + 1);
-    tourTimer = setTimeout(step, 5200);
+    tourTimer = setTimeout(step, 6000);
   };
   step();
 }
 function stopTour() {
   tourPlaying = false;
   clearTimeout(tourTimer);
+  document.body.classList.remove('touring');
+  if (focusMarker) { focusMarker.remove(); focusMarker = null; }
   const b = document.getElementById('tour-play');
   b.classList.remove('playing');
   b.textContent = '▶ Spustiť prehliadku';
@@ -239,6 +302,9 @@ function wireUI() {
   toggle('t-water', 'water', 'water-edge');
   toggle('t-roads', 'roads');
   toggle('t-districts', 'districts');
+
+  // landmarks are DOM markers, not map layers
+  document.getElementById('t-landmarks').addEventListener('change', (e) => showLandmarks(e.target.checked));
 
   // height filter
   const hf = document.getElementById('height-filter');

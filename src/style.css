@@ -124,6 +124,32 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .panel-reveal{top:84px;left:18px;opacity:0;pointer-events:none;transition:opacity .3s}
 .panel-reveal.show{opacity:1;pointer-events:auto}
 
+/* ---------- orientačné body (markery) ---------- */
+.lm{user-select:none;-webkit-user-select:none}
+.lm-pin{display:flex;flex-direction:column;align-items:center;cursor:default;transition:opacity .3s}
+.lm-pin .lm-dot{font-size:17px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.7))}
+.lm-pin .lm-label{margin-top:3px;font-size:11px;font-weight:600;color:var(--ink);white-space:nowrap;
+  background:rgba(10,14,20,.74);backdrop-filter:blur(6px);border:1px solid var(--line);
+  padding:2px 8px;border-radius:999px;letter-spacing:.2px;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+.lm-area{font-family:"Space Grotesk";font-size:13px;font-weight:600;letter-spacing:3.5px;
+  color:rgba(180,200,215,.5);text-shadow:0 1px 8px rgba(0,0,0,.9);white-space:nowrap;pointer-events:none}
+
+body.hide-lm .lm{display:none}
+body.zoom-far .lm-pin .lm-label{display:none}      /* oddialené → len ikonky */
+body.touring .lm-pin{opacity:.14}                   /* auto-tour → stlm statické */
+body.touring .lm-area{opacity:.22}
+
+/* tour focus — pulzujúci špendlík na subjekte */
+.lm-focus{display:flex;flex-direction:column;align-items:center;pointer-events:none;position:relative}
+.lm-focus-ring{position:absolute;bottom:2px;left:50%;width:16px;height:16px;transform:translateX(-50%);
+  border-radius:50%;background:var(--accent-warm);animation:pulse 1.9s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,122,69,.55)}70%{box-shadow:0 0 0 28px rgba(255,122,69,0)}100%{box-shadow:0 0 0 0 rgba(255,122,69,0)}}
+.lm-focus-pin{font-size:30px;filter:drop-shadow(0 5px 10px rgba(0,0,0,.75));animation:drop .5s cubic-bezier(.2,.8,.2,1)}
+@keyframes drop{0%{transform:translateY(-20px);opacity:0}100%{transform:none;opacity:1}}
+.lm-focus-label{margin-top:4px;font-family:"Space Grotesk";font-size:14px;font-weight:600;color:#2a0d02;
+  background:var(--accent-warm);padding:4px 13px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;
+  box-shadow:0 8px 22px -5px rgba(255,122,69,.6)}
+
 /* ---------- inspector ---------- */
 .inspector{position:absolute;right:18px;bottom:18px;z-index:7;width:268px;
   background:var(--glass-2);backdrop-filter:blur(20px);border:1px solid var(--line);
