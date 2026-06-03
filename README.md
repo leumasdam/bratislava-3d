@@ -15,14 +15,20 @@ sa pýta: **koľko z toho, čo denne potrebuješ, máš pešo do 15 minút?**
 
 *„15-minútové mesto"* je urbanistický koncept: dobré miesto na život má školu,
 škôlku, lekára, lekáreň, obchod, zastávku a park v pešej dostupnosti. Tento
-nástroj to **počíta z reálnych dát** a zafarbí ním celé mesto — a klikom kdekoľvek
-povie konkrétne, čo tam máš a za koľko minút.
+nástroj to **počíta z reálnych dát** pre **obytné územie celej Bratislavy**
+(hexagónová mriežka) a klikom kdekoľvek povie konkrétne, čo tam máš a za koľko minút.
 
-Zistenie: **jadro Bratislavy už je hotové 15-minútové mesto** (97 % budov má 6+/7),
-ale aj v ňom sú rozdiely a pukliny — a tie nástroj odhalí.
+Zistenie: **jadro je hotové 15-minútové mesto, no celomestsky je to inak** —
+**58 % obytných oblastí má 6+/7, ale každá štvrtá (24 %) je autozávislá.**
+Zelené žiariace centrum vs nízke červené okraje: presne ten kontrast, ktorý
+plánovanie rieši.
 
 ## Čo to vie
 
+- **Celomestská hex mriežka** dostupnosti — 350 hexagónov nad obytným územím
+  (zamaskované na `landuse=residential`, aby polia/lesy nesvietili falošne).
+  Výška + farba = index dostupnosti. Z diaľky 3D krajina, pri priblížení sa
+  splošti a vystúpi **3D detail jadra** (10 046 budov).
 - **Dve šošovky** — zafarbi mesto podľa **15-min dostupnosti** (index 0–100,
   červená → zelená) alebo podľa **výšky zástavby**. Jeden klik mení optiku.
 - **Klik kamkoľvek → živá analýza**: „škola 4 min ✓, lekár 18 min ✗… máš 5/7".
@@ -49,11 +55,14 @@ ale aj v ňom sú rozdiely a pukliny — a tie nástroj odhalí.
 ```bash
 python fetch_all.py          # budovy, zeleň, voda, ulice, hranice → data/*.geojson
 python fill_gaps.py          # doplní dlaždice, ktoré pod záťažou zlyhali
-python fetch_water_rivers.py # Dunaj + jazerá (plochy) a rieky/kanály (línie)
-python make_danube.py        # os Dunaja → reálna šírka (~300 m) bufferom (shapely)
-python fetch_amenities.py    # 7 kategórií vybavenosti → amenities.geojson
-python compute_access.py     # 15-min skóre (sc 0–7, idx 0–100) do buildings.geojson
+python fetch_amenities.py    # vybavenosť v jadre → amenities.geojson
+python compute_access.py     # 15-min skóre budov jadra (sc, idx)
 python fetch_wiki.py         # fotka + popis pamiatok zo sk.wikipedia
+# --- celomestská vrstva ---
+python fetch_city_data.py    # vybavenosť + obytné územie cez celé mesto
+python make_grid.py          # hex mriežka dostupnosti (maska = residential)
+python fetch_city_context.py # Dunaj + hlavné cesty cez celé mesto (skelet)
+python make_danube.py        # osi riek → reálna šírka bufferom (shapely)
 ```
 
 Verejné Overpass mirrory pod záťažou vracajú 504, preto sťahovanie:

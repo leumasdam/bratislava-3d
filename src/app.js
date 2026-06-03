@@ -71,8 +71,8 @@ const map = new maplibregl.Map({
   style: { version: 8, sources: {}, layers: [
     { id: 'bg', type: 'background', paint: { 'background-color': MOODS.day.bg } },
   ], glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf' },
-  center: [17.1105, 48.1395],
-  zoom: 13.7, pitch: 56, bearing: -19,
+  center: [17.1150, 48.1500],
+  zoom: 11.4, pitch: 50, bearing: -16,
   maxPitch: 78, antialias: true, attributionControl: false,
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
@@ -108,12 +108,14 @@ function applyLight(mood) {
 
 /* ---------- build the scene ---------- */
 map.on('load', async () => {
-  const [buildings, green, water, roads, districts, amenities, rivers, info] = await Promise.all([
+  const [buildings, green, water, roads, districts, amenities, rivers, info, grid] = await Promise.all([
     loadJSON('buildings.geojson'), loadJSON('green.geojson'),
     loadJSON('water.geojson'), loadJSON('roads.geojson'),
-    loadJSON('districts.geojson'), loadJSON('amenities.geojson'),
+    loadJSON('districts.geojson'), loadJSON('amenities_city.geojson'),
     loadJSON('rivers.geojson'), loadJSON('landmarks_info.json'),
+    loadJSON('grid.geojson'),
   ]);
+  const cityRoads = await loadJSON('city_roads.geojson');
   buildingsData = buildings;
   lmInfo = info && !info.features ? info : {};
   for (const c of CAT_ORDER) amByCat[c] = [];
@@ -125,9 +127,11 @@ map.on('load', async () => {
   map.addSource('water', { type: 'geojson', data: water });
   map.addSource('rivers', { type: 'geojson', data: rivers });
   map.addSource('green', { type: 'geojson', data: green });
+  map.addSource('city-roads', { type: 'geojson', data: cityRoads });
   map.addSource('roads', { type: 'geojson', data: roads });
   map.addSource('districts', { type: 'geojson', data: districts });
   map.addSource('amenities', { type: 'geojson', data: amenities });
+  map.addSource('grid', { type: 'geojson', data: grid });
   map.addSource('buildings', { type: 'geojson', data: buildings, generateId: true });
 
   /* water — svetlomodrá, nech Dunaj vystúpi */
@@ -143,6 +147,18 @@ map.on('load', async () => {
       'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16,
         ['match', ['get', 'kind'], 'river', 6, 'canal', 4, 2]],
       'line-opacity': 0.75,
+    } });
+
+  /* celomestský skelet hlavných ciest (pod hexmi) */
+  map.addLayer({ id: 'city-roads', type: 'line', source: 'city-roads',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['match', ['get', 'k'], 'rail', '#3a4655',
+        ['interpolate', ['linear'], ['get', 'r'], 0, '#33424f', 2, '#46596b', 4, '#5c7589']],
+      'line-width': ['interpolate', ['linear'], ['zoom'],
+        10, ['+', 0.4, ['*', 0.5, ['get', 'r']]],
+        14, ['+', 1, ['*', 1.4, ['get', 'r']]]],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'r'], 0, 0.5, 4, 0.95],
     } });
 
   /* green */
@@ -167,6 +183,20 @@ map.on('load', async () => {
     layout: { visibility: 'none' },
     paint: { 'line-color': '#46e0d0', 'line-width': 1.4, 'line-opacity': 0.55,
       'line-dasharray': [3, 2] } });
+
+  /* celomestská hex mriežka dostupnosti — 3D prizmy podľa indexu */
+  map.addLayer({ id: 'grid', type: 'fill-extrusion', source: 'grid',
+    paint: {
+      'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'idx'], ...ACCESS_RAMP],
+      // vysoké prizmy z celomestského pohľadu, splošti pri priblížení nech budovy vystúpia
+      'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'],
+        11.5, ['+', 15, ['*', 1.1, ['get', 'idx']]],
+        13.5, 3],
+      'fill-extrusion-base': 0,
+      'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.82, 14, 0.5],
+    } });
+  // pri silnom priblížení skry hexy úplne, nech vládne 3D detail jadra
+  map.setLayerZoomRange('grid', 0, 15.5);
 
   /* 3D buildings (farba sa nastaví cez setLens) */
   map.addLayer({ id: 'buildings', type: 'fill-extrusion', source: 'buildings',
@@ -200,8 +230,9 @@ map.on('load', async () => {
       'fill-extrusion-opacity': 0.4,
     } });
 
-  /* vybavenosť — farebné body podľa kategórie */
+  /* vybavenosť — farebné body podľa kategórie (default skryté, pri oddialení rušia) */
   map.addLayer({ id: 'amenities', type: 'circle', source: 'amenities',
+    layout: { visibility: 'none' },
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2.2, 16, 5.5],
       'circle-color': ['match', ['get', 'cat'],
@@ -211,7 +242,7 @@ map.on('load', async () => {
     } });
 
   applyLight('day');
-  computeStats(buildings);
+  computeStats(buildings, grid);
   buildLandmarks();
   setLens('access');
   wireUI();
@@ -263,16 +294,19 @@ function buildingColorExpr(which) {
 }
 
 /* ---------- stats (top bar) ---------- */
-function computeStats(fc) {
+function computeStats(fc, grid) {
   const n = fc.features.length;
-  let tallest = 0, good = 0;
-  for (const f of fc.features) {
-    tallest = Math.max(tallest, f.properties.h || 0);
-    if ((f.properties.sc || 0) >= 6) good++;
-  }
-  const pct = Math.round(100 * good / n);
-  document.getElementById('stat-buildings').innerHTML = `<b>${n.toLocaleString('sk')}</b> budov`;
-  document.getElementById('stat-tallest').innerHTML = `<b>${pct} %</b> má 6+/7 do 15 min`;
+  let tallest = 0;
+  for (const f of fc.features) tallest = Math.max(tallest, f.properties.h || 0);
+  const cells = (grid && grid.features) || [];
+  const good = cells.filter(f => (f.properties.sc || 0) >= 6).length;
+  const poor = cells.filter(f => (f.properties.sc || 0) <= 3).length;
+  const pctGood = cells.length ? Math.round(100 * good / cells.length) : 0;
+  const pctPoor = cells.length ? Math.round(100 * poor / cells.length) : 0;
+  document.getElementById('stat-buildings').innerHTML =
+    `<b>${pctGood} %</b> obyt. oblastí v 15-min meste`;
+  document.getElementById('stat-tallest').innerHTML =
+    `<b>${pctPoor} %</b> autozávislých`;
 }
 
 /* ---------- šošovka ---------- */
@@ -296,8 +330,9 @@ function setLens(which) {
       + 'panelová Petržalka a nové veže — tri éry mesta naraz.';
   } else {
     st.textContent = '15-minútové mesto';
-    tx.innerHTML = 'Koľko zo 7 denných potrieb máš pešo do 15 minút? Mesto je zafarbené podľa '
-      + 'dostupnosti. <b>Klikni kamkoľvek</b> a zisti, čo máš v dosahu.';
+    tx.innerHTML = 'Hexagóny pokrývajú <b>obytné územie celej Bratislavy</b> — výška a farba = '
+      + 'koľko zo 7 denných potrieb máš pešo do 15 min. Jadro žiari, okraje sú autozávislé. '
+      + '<b>Klikni kamkoľvek</b> a zisti, čo tam máš v dosahu.';
   }
   renderLegend();
   applyBuildingFilter();
@@ -434,8 +469,8 @@ function closeLandmarkCard() { document.getElementById('lmcard').hidden = true; 
 
 /* ---------- guided tour ---------- */
 const TOUR = [
-  { title:'Mesto ako model', center:[17.1105,48.1395], zoom:13.6, pitch:54, bearing:-19,
-    text:'Celá scéna je poskladaná <b>výhradne z otvorených dát</b> — žiadna podkladová mapa. Presne ako fyzický 3D model, len v prehliadači. Ikonky ukazujú, kde čo je.' },
+  { title:'Celá Bratislava', center:[17.1150,48.1500], zoom:11.4, pitch:50, bearing:-16,
+    text:'Hexagóny cez <b>obytné územie celého mesta</b> — výška a farba ukazujú 15-min dostupnosť. Zelené žiariace jadro vs nízke červené okraje: <b>každá piata oblasť je autozávislá.</b>' },
   { title:'Bratislavský hrad', focus:[17.1003,48.1419], icon:'🏰', zoom:15.6, pitch:64, bearing:24,
     text:'Hradný kopec a pod ním <b>nízke historické jadro</b> — Staré Mesto si stáročia drží drobnú mierku.' },
   { title:'Staré Mesto', focus:[17.1135,48.1445], icon:'🏛️', zoom:15.4, pitch:65, bearing:-34,
@@ -506,11 +541,12 @@ function wireUI() {
       layers.forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', v));
     });
   };
+  toggle('t-grid', 'grid');
   toggle('t-buildings', 'buildings', 'buildings-hi');
   toggle('t-amenities', 'amenities');
   toggle('t-green', 'green', 'green-edge');
   toggle('t-water', 'water', 'water-edge', 'rivers');
-  toggle('t-roads', 'roads');
+  toggle('t-roads', 'roads', 'city-roads');
   toggle('t-districts', 'districts');
 
   // landmarks are DOM markers, not map layers

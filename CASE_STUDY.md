@@ -26,6 +26,24 @@ toho, aké je vysoké, ale podľa toho, **aké je tam dobre žiť**.
 
 ## Kľúčové rozhodnutia
 
+### 0. Z jadra na celé mesto — lebo jadro klamalo
+
+Prvá analýza pokrývala len husté centrum a vyšlo, že **97 % budov je v 15-min
+meste**. Pekné číslo — a zavádzajúce, lebo centrum je *vždy* dobre obslúžené.
+Skutočná otázka („kde mesto funguje a kde nie?") sa dá položiť len **celomestsky**.
+
+Lenže celá Bratislava = ~150 000 budov, čo prehliadač nedá. Riešenie je štandardný
+GIS prístup: namiesto budov **hexagónová mriežka** (~350 hexov nad obytným územím).
+Tisíce buniek namiesto stotisícov budov — plynulé, a navyše to čítaš ako priestorovú
+analýzu, nie ako zoznam domov. Z diaľky 3D krajina dostupnosti, pri priblížení sa
+splošti a vystúpi pôvodný 3D detail jadra. Celomestsky vyšlo úprimnejšie číslo:
+**58 % obytných oblastí v 15-min meste, 24 % autozávislých.**
+
+A jedno rozhodnutie o poctivosti: mriežku **maskujem len na obytné územie**
+(`landuse=residential`). Bez toho by lesy a polia svietili „červeno = žiadne
+služby", čo je nezmysel — tam nikto nebýva. Mapa nemá tvrdiť o miestach, ktoré
+nemajú obyvateľa.
+
 ### 1. Poctivá metóda — a poctivo priznaná
 
 Skutočná pešia dostupnosť potrebuje routovací engine (siete chodníkov, prechody).
