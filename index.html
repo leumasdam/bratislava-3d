@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Bratislava 3D · Atlas mesta z otvorených dát</title>
+<meta name="description" content="Interaktívny 3D model Bratislavy postavený výhradne z otvorených geodát. Výška zástavby, mestská zeleň a štruktúra mesta — bez API kľúča, v prehliadači." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="src/style.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- top brand bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <strong>Bratislava&nbsp;3D</strong>
+        <em>Atlas mesta z otvorených dát</em>
+      </div>
+    </div>
+    <div class="topmeta">
+      <span id="stat-buildings">— budov</span>
+      <span class="sep"></span>
+      <span id="stat-tallest">najvyššia —</span>
+    </div>
+  </header>
+
+  <!-- left narrative / control panel -->
+  <aside class="panel" id="panel">
+    <button class="panel-collapse" id="panel-collapse" aria-label="Skryť panel">‹</button>
+
+    <div class="panel-scroll">
+      <section class="story">
+        <h1 id="story-title">Vertikálny profil mesta</h1>
+        <p id="story-text">
+          Každá budova je vytlačená do výšky na základe reálnych dát z OpenStreetMap.
+          Nízke historické jadro, panelová stena Petržalky za riekou a nové veže —
+          jeden pohľad, tri éry mesta.
+        </p>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Vrstvy</h2>
+        </div>
+        <div class="toggles">
+          <label class="tg"><input type="checkbox" id="t-buildings" checked><span>3D budovy</span></label>
+          <label class="tg"><input type="checkbox" id="t-green" checked><span>Zeleň a parky</span></label>
+          <label class="tg"><input type="checkbox" id="t-water" checked><span>Voda (Dunaj)</span></label>
+          <label class="tg"><input type="checkbox" id="t-roads" checked><span>Ulice a železnica</span></label>
+          <label class="tg"><input type="checkbox" id="t-districts"><span>Hranice mestských častí</span></label>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Výška zástavby</h2>
+          <span class="hint" id="legend-unit">metre</span>
+        </div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Filter výšky</h2>
+          <span class="hint"><span id="filter-val">0</span>&nbsp;m+</span>
+        </div>
+        <input type="range" id="height-filter" min="0" max="80" value="0" step="2" />
+        <p class="micro">Zobraz len budovy vyššie ako zvolená hodnota — vystúpia dominanty mesta.</p>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>Atmosféra</h2></div>
+        <div class="seg" id="time-seg">
+          <button data-time="day" class="active">Deň</button>
+          <button data-time="dusk">Súmrak</button>
+          <button data-time="night">Noc</button>
+        </div>
+      </section>
+
+      <section class="block tour">
+        <div class="block-head"><h2>Sprievodca mestom</h2></div>
+        <div class="tour-caption" id="tour-caption">
+          Spusti prehliadku a kamera ťa prevedie kľúčovými bodmi — od hradu cez nové veže po Petržalku.
+        </div>
+        <div class="tour-controls">
+          <button id="tour-play" class="btn btn-primary">▶ Spustiť prehliadku</button>
+          <button id="tour-prev" class="btn btn-ghost" aria-label="Predošlé">‹</button>
+          <button id="tour-next" class="btn btn-ghost" aria-label="Ďalšie">›</button>
+        </div>
+      </section>
+    </div>
+
+    <footer class="panel-foot">
+      <span>Dáta © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · ODbL</span>
+      <span>MapLibre GL · render v prehliadači</span>
+    </footer>
+  </aside>
+
+  <button class="panel-reveal" id="panel-reveal" aria-label="Zobraziť panel">›</button>
+
+  <!-- building inspector card -->
+  <div class="inspector" id="inspector" hidden>
+    <button class="insp-close" id="insp-close" aria-label="Zavrieť">×</button>
+    <div class="insp-kind" id="insp-kind">budova</div>
+    <div class="insp-name" id="insp-name">Bez názvu</div>
+    <div class="insp-rows">
+      <div class="insp-row"><span>Výška</span><b id="insp-height">— m</b></div>
+      <div class="insp-row"><span>Podlaží (odhad)</span><b id="insp-levels">—</b></div>
+    </div>
+    <div class="insp-bar"><div id="insp-bar-fill"></div></div>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="loader-inner">
+      <div class="loader-bars"><i></i><i></i><i></i><i></i><i></i></div>
+      <p>Skladám model mesta z otvorených dát…</p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="src/app.js"></script>
+</body>
+</html>
