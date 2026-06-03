@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas2" rel="stylesheet" />
+<link href="src/style.css?v=atlas3" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -60,7 +60,7 @@
         <div class="block-head"><h2>Plánovač — postav a meraj</h2></div>
         <label class="tg"><input type="checkbox" id="t-planner"><span>Režim plánovača</span></label>
         <div id="planner-tools" hidden>
-          <p class="micro">Vyber, čo postaviť, a klikni na mapu. Nástroj prepočíta, koľko <b>ľudí</b> tým získa dostupnosť.</p>
+          <p class="micro">Vyber, čo postaviť, a klikni na mapu. Nástroj spočíta <b>dopad v ľuďoch</b> — koľko <b>obyvateľov</b> tú vybavenosť vďaka tebe má novo pešo do 15 min (predtým ju v dosahu nemali).</p>
           <div class="ptypes" id="ptypes"></div>
           <div class="pactions">
             <button class="btn btn-primary" id="plan-opt">✨ Navrhni najlepšie miesto</button>
@@ -182,13 +182,13 @@
         pešo do 15 minút. Táto mapa to počíta pre obytné územie celého mesta z otvorených dát.
       </p>
       <div class="intro-stats">
-        <div class="is"><b id="intro-good">58 %</b><span>oblastí je v 15-min meste</span></div>
-        <div class="is"><b id="intro-poor">24 %</b><span>je autozávislých</span></div>
+        <div class="is"><b id="intro-good">58 %</b><span>obytných oblastí má všetko do 15 min pešo</span></div>
+        <div class="is"><b id="intro-poor">24 %</b><span>je odkázaných na auto</span></div>
       </div>
       <div class="intro-how">
-        <div class="ih"><span>⬢</span> Každý <b>hexagón</b> = obytná oblasť. Výška a farba = dostupnosť.</div>
-        <div class="ih"><span>👆</span> <b>Klikni kamkoľvek</b> a zisti, čo tam máš do 15 minút.</div>
-        <div class="ih"><span>🎬</span> Alebo spusti <b>sprievodcu</b> a mesto ti to ukáže.</div>
+        <div class="ih"><span>⬢</span> Každý <b>hexagón</b> je jedna obytná oblasť. Čím vyšší a zelenší, tým lepšia dostupnosť.</div>
+        <div class="ih"><span>👆</span> <b>Klikni kamkoľvek</b> a zistíš, čo tam máš pešo do 15 minút.</div>
+        <div class="ih"><span>🎬</span> Alebo sa <b>nechaj previezť mestom</b> — sprievodca ťa prevedie kľúčovými bodmi.</div>
       </div>
       <div class="intro-actions">
         <button class="btn btn-primary" id="intro-explore">Preskúmať mesto</button>
@@ -206,6 +206,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas2"></script>
+  <script src="src/app.js?v=atlas3"></script>
 </body>
 </html>

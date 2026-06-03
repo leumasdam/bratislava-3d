@@ -32,7 +32,7 @@ const INDICATORS = [
   { id:'green',   key:'q_green',   emoji:'🌳', label:'Zeleň',         desc:'Zelená rovnosť — podiel a blízkosť zelene v okolí.' },
   { id:'heat',    key:'q_heat',    emoji:'🌡️', label:'Tepl. komfort', desc:'Tepelný komfort — pomer zelene/vody voči betónu (proxy ostrova).' },
   { id:'transit', key:'q_transit', emoji:'🚊', label:'MHD',           desc:'Kvalita MHD — hustota zastávok a blízkosť koľajovej dopravy.' },
-  { id:'walk',    key:'q_walk',    emoji:'🚶', label:'Chodeckosť',    desc:'Chodeckosť — jemnosť uličnej siete, bariéry diaľnic.' },
+  { id:'walk',    key:'q_walk',    emoji:'🚶', label:'Pre chodcov',    desc:'Ako dobre sa tu chodí pešo — hustá a jemná sieť ulíc, málo bariér (diaľnic).' },
   { id:'noise',   key:'q_noise',   emoji:'🔇', label:'Pokoj',         desc:'Pokoj — inverz dopravného hluku (vzdialenosť od ciest/tratí).' },
 ];
 const META = Object.fromEntries(INDICATORS.map(i => [i.id, i]));
@@ -414,9 +414,9 @@ function computeStats(fc, grid) {
   const pctGood = cells.length ? Math.round(100 * good / cells.length) : 0;
   const pctPoor = cells.length ? Math.round(100 * poor / cells.length) : 0;
   document.getElementById('stat-buildings').innerHTML =
-    `<b>${pctGood} %</b> obyt. oblastí v 15-min meste`;
+    `<b>${pctGood} %</b> oblastí má všetko do 15 min`;
   document.getElementById('stat-tallest').innerHTML =
-    `<b>${pctPoor} %</b> autozávislých`;
+    `<b>${pctPoor} %</b> odkázaných na auto`;
 }
 
 /* ---------- zvýrazni najhoršie oblasti (filter gridu) ---------- */
