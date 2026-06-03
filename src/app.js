@@ -46,6 +46,13 @@ let amByCat = {};           // cat -> [[lon,lat],...] pre klik-výpočet
 let weakOn = false;
 let activeCats = new Set(CAT_ORDER);   // ktoré kategórie vybavenosti sa zobrazujú
 
+/* ---- plánovacie pieskovisko ---- */
+let plannerOn = false;
+let placeType = 'obchod';
+let placed = [];            // {cat, ll, marker}
+let hexCentroids = [];      // [lon,lat] na hex (poradie features)
+let baselineM = [];         // snapshot m_<cat> na reset
+
 /* ---- orientačné body: pin = známe miesto, area = názov štvrte ---- */
 const LANDMARKS = [
   { t:'pin', icon:'🏰', name:'Bratislavský hrad', at:[17.1003,48.1419], year:'9. stor. / obnova 1968', fact:'Dominanta nad Dunajom, dnes sídlo expozícií SNM.' },
@@ -270,12 +277,14 @@ map.on('load', async () => {
     } });
 
   gridData = grid;
+  initAtlasRuntime();
   applyLight('day');
   computeStats(buildings, grid);
   buildLandmarks();
   buildIndSel();
   buildWeights();
   buildCatLens();
+  buildPlanner();
   setIndicator('index');
   buildFindings(grid);
   wireUI();
@@ -287,7 +296,7 @@ map.on('load', async () => {
   map.on('mouseleave', 'grid', () => map.getCanvas().style.cursor = '');
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, LANDMARKS, INDICATORS, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, addFacility, runOptimizer, setPlanner: (v) => { document.getElementById('t-planner').checked = v; document.getElementById('t-planner').dispatchEvent(new Event('change')); }, LANDMARKS, INDICATORS, CAT_ORDER, TOUR };
   window.__ready = true;
 
   /* hover budov */
@@ -304,8 +313,9 @@ map.on('load', async () => {
     map.setFilter('buildings-hi', ['==', ['id'], -1]);
   });
 
-  /* klik kdekoľvek → 15-min analýza + rozbor hexa (atlas) */
+  /* klik kdekoľvek → 15-min analýza + rozbor hexa (atlas), alebo postav (plánovač) */
   map.on('click', (e) => {
+    if (plannerOn) { addFacility(placeType, [e.lngLat.lng, e.lngLat.lat]); return; }
     const b = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
     const g = map.queryRenderedFeatures(e.point, { layers: ['grid'] });
     showSpotAt(e.lngLat, b.length ? b[0].properties : null, g.length ? g[0].properties : null);
@@ -568,6 +578,131 @@ function showSpotAt(lngLat, bldg, hex) {
   document.getElementById('spot').hidden = false;
 }
 
+/* ---------- Atlas runtime + plánovacie pieskovisko ---------- */
+const CAT_BUDGET = Object.fromEntries(CAT_ORDER.map(c => [c, Math.round(CAT_META[c].rad * 1.3 / 80)]));
+let baselineAmLen = {};
+
+function hexCentroid(f) {
+  const r = f.geometry.coordinates[0], n = r.length - 1;
+  let x = 0, y = 0;
+  for (let i = 0; i < n; i++) { x += r[i][0]; y += r[i][1]; }
+  return [x / n, y / n];
+}
+function jsAccess(p) {
+  let s = 0;
+  for (const c of CAT_ORDER) s += Math.max(0, 1 - (p['m_' + c] ?? 30) / 15);
+  return Math.round(100 * s / CAT_ORDER.length * 10) / 10;
+}
+function compositeOf(p) {
+  const tot = WEIGHTED.reduce((s, k) => s + weights[k], 0) || 1;
+  let v = 0;
+  for (const k of WEIGHTED) v += weights[k] * (p[META[k].key] || 0);
+  return Math.round(v / tot * 10) / 10;
+}
+function initAtlasRuntime() {
+  hexCentroids = gridData.features.map(hexCentroid);
+  baselineM = gridData.features.map(f => Object.fromEntries(CAT_ORDER.map(c => [c, f.properties['m_' + c]])));
+  baselineAmLen = Object.fromEntries(CAT_ORDER.map(c => [c, (amByCat[c] || []).length]));
+  for (const f of gridData.features) {
+    f.properties.q_access = jsAccess(f.properties);
+    f.properties.q_index = compositeOf(f.properties);
+  }
+  if (map.getSource('grid')) map.getSource('grid').setData(gridData);
+}
+
+function addFacility(cat, ll, isOpt) {
+  amByCat[cat] = amByCat[cat] || [];
+  amByCat[cat].push(ll);
+  const el = document.createElement('div');
+  el.className = 'plan-marker' + (isOpt ? ' opt' : '');
+  el.innerHTML = `<span>${CAT_META[cat].emoji}</span>`;
+  const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(ll).addTo(map);
+  placed.push({ cat, ll, marker });
+
+  let peopleGained = 0, idxDeltaSum = 0, improved = 0;
+  const budget = CAT_BUDGET[cat];
+  for (let i = 0; i < gridData.features.length; i++) {
+    const p = gridData.features[i].properties;
+    const newMin = Math.max(1, Math.round(haversineM(hexCentroids[i], ll) * 1.3 / 80));
+    const oldMin = p['m_' + cat] ?? 30;
+    if (newMin < oldMin) {
+      const nowReach = newMin <= budget, wasReach = oldMin <= budget;
+      p['m_' + cat] = newMin;
+      const oldIdx = p.q_index;
+      p.q_access = jsAccess(p);
+      p.q_index = compositeOf(p);
+      idxDeltaSum += p.q_index - oldIdx; improved++;
+      if (nowReach && !wasReach) peopleGained += (p.pop || 0);
+    }
+  }
+  map.getSource('grid').setData(gridData);
+  applyGridColor();
+  if (indicator === 'index') buildFindings(gridData);
+  const m = CAT_META[cat];
+  document.getElementById('pimpact').innerHTML =
+    `${isOpt ? '✨ Optimálne miesto: ' : ''}<b>${m.emoji} ${m.label}</b> — novo dostupné pre <b>${peopleGained.toLocaleString('sk')} obyvateľov</b> do 15 min pešo`
+    + (improved ? `, index <b>+${(idxDeltaSum / improved).toFixed(1)}</b> v ${improved} oblastiach.` : '.');
+}
+
+function runOptimizer(cat) {
+  const budget = CAT_BUDGET[cat];
+  let best = null, bestGain = -1;
+  for (let c = 0; c < hexCentroids.length; c++) {
+    if ((gridData.features[c].properties.pop || 0) === 0) continue;
+    const cand = hexCentroids[c];
+    let gain = 0;
+    for (let i = 0; i < gridData.features.length; i++) {
+      const p = gridData.features[i].properties;
+      if ((p.pop || 0) === 0 || (p['m_' + cat] ?? 30) <= budget) continue;
+      if (Math.round(haversineM(hexCentroids[i], cand) * 1.3 / 80) <= budget) gain += p.pop;
+    }
+    if (gain > bestGain) { bestGain = gain; best = cand; }
+  }
+  if (best) { addFacility(cat, best, true); map.flyTo({ center: best, zoom: 12.4, duration: 1400, essential: true }); }
+}
+
+function recomputeFromPlaced() {
+  for (let i = 0; i < gridData.features.length; i++) {
+    const p = gridData.features[i].properties;
+    for (const c of CAT_ORDER) p['m_' + c] = baselineM[i][c];
+  }
+  for (const c of CAT_ORDER) if (amByCat[c]) amByCat[c].length = baselineAmLen[c];
+  for (const f of placed) {
+    amByCat[f.cat].push(f.ll);
+    for (let i = 0; i < gridData.features.length; i++) {
+      const p = gridData.features[i].properties;
+      const nm = Math.max(1, Math.round(haversineM(hexCentroids[i], f.ll) * 1.3 / 80));
+      if (nm < p['m_' + f.cat]) p['m_' + f.cat] = nm;
+    }
+  }
+  for (const f of gridData.features) { f.properties.q_access = jsAccess(f.properties); f.properties.q_index = compositeOf(f.properties); }
+  map.getSource('grid').setData(gridData);
+  applyGridColor();
+  if (indicator === 'index') buildFindings(gridData);
+}
+function undoFacility() {
+  const last = placed.pop();
+  if (last) last.marker.remove();
+  recomputeFromPlaced();
+  document.getElementById('pimpact').innerHTML = placed.length ? `${placed.length} zásahov.` : 'Vyber typ a klikni na mapu, kam ho postaviť.';
+}
+function resetPlanner() {
+  placed.forEach(f => f.marker.remove());
+  placed = [];
+  recomputeFromPlaced();
+  document.getElementById('pimpact').innerHTML = 'Vyber typ a klikni na mapu, kam ho postaviť.';
+}
+
+function buildPlanner() {
+  const wrap = document.getElementById('ptypes');
+  wrap.innerHTML = CAT_ORDER.map(c =>
+    `<button data-cat="${c}" title="${CAT_META[c].label}"${c === placeType ? ' class="active"' : ''}>${CAT_META[c].emoji} ${CAT_META[c].label}</button>`).join('');
+  wrap.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    placeType = b.dataset.cat;
+    wrap.querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.cat === placeType));
+  }));
+}
+
 /* ---------- orientačné body (HTML markery) ---------- */
 function buildLandmarks() {
   for (const lm of LANDMARKS) {
@@ -727,6 +862,17 @@ function wireUI() {
     weakOn = e.target.checked;
     applyWeak();
   });
+
+  // plánovač
+  document.getElementById('t-planner').addEventListener('change', (e) => {
+    plannerOn = e.target.checked;
+    document.getElementById('planner-tools').hidden = !plannerOn;
+    document.body.classList.toggle('planning', plannerOn);
+    if (plannerOn && indicator !== 'index' && indicator !== 'access') setIndicator('index');
+  });
+  document.getElementById('plan-opt').addEventListener('click', () => runOptimizer(placeType));
+  document.getElementById('plan-undo').addEventListener('click', undoFacility);
+  document.getElementById('plan-reset').addEventListener('click', resetPlanner);
 
   // atmosphere
   document.querySelectorAll('#time-seg button').forEach(b => {

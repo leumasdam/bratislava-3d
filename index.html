@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas1" rel="stylesheet" />
+<link href="src/style.css?v=atlas2" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -54,6 +54,21 @@
         <div class="block-head"><h2>Váhy indexu</h2><span class="hint">čo je pre teba dôležité?</span></div>
         <div class="weights" id="weights"></div>
         <button class="wreset" id="weights-reset">Vyrovnať váhy</button>
+      </section>
+
+      <section class="block" id="block-planner">
+        <div class="block-head"><h2>Plánovač — postav a meraj</h2></div>
+        <label class="tg"><input type="checkbox" id="t-planner"><span>Režim plánovača</span></label>
+        <div id="planner-tools" hidden>
+          <p class="micro">Vyber, čo postaviť, a klikni na mapu. Nástroj prepočíta, koľko <b>ľudí</b> tým získa dostupnosť.</p>
+          <div class="ptypes" id="ptypes"></div>
+          <div class="pactions">
+            <button class="btn btn-primary" id="plan-opt">✨ Navrhni najlepšie miesto</button>
+            <button class="btn btn-ghost" id="plan-undo" title="Vrátiť posledné">↶</button>
+            <button class="btn btn-ghost" id="plan-reset" title="Vymazať všetko">⟲</button>
+          </div>
+          <div class="pimpact" id="pimpact">Vyber typ a klikni na mapu, kam ho postaviť.</div>
+        </div>
       </section>
 
       <section class="block" id="block-catlens" hidden>
@@ -191,6 +206,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas1"></script>
+  <script src="src/app.js?v=atlas2"></script>
 </body>
 </html>

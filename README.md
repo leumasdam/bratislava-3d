@@ -25,6 +25,15 @@ Každý hexagón obytného územia má skóre 0–100 v šiestich nezávislých 
 Spoja sa do **Indexu kvality miesta** — a **posuvníkmi váh** si zvolíš, čo je
 pre teba dôležité (mesto sa prepočíta naživo). Klik na hex ukáže celý jeho profil.
 
+## Plánovacie pieskovisko
+
+Atlas mesto nielen opisuje, ale ho necháva **meniť**: v režime plánovača klikneš
+a *postavíš* škôlku/lekára/zastávku/park — a nástroj **okamžite prepočíta dopad
+v ľuďoch** („novo dostupné pre 3 400 obyvateľov do 15 min"). Tlačidlo
+**„Navrhni najlepšie miesto"** prejde kandidátske lokality a nájde tú, ktorá
+pomôže najväčšiemu počtu obyvateľov — decision-support, nie len mapa. Populácia
+na hex je odhad z obytného územia, kalibrovaný na ~475 000 obyvateľov Bratislavy.
+
 ---
 
 ## Téza
