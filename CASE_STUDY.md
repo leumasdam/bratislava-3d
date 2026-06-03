@@ -26,6 +26,27 @@ toho, aké je vysoké, ale podľa toho, **aké je tam dobre žiť**.
 
 ## Kľúčové rozhodnutia
 
+### ★ Z jedného indikátora na atlas šiestich rozmerov
+
+15-min dostupnosť je len jeden pohľad na kvalitu života. Reálny výstup mestského
+inštitútu je **multi-indikátorový atlas**: viacero nezávislých analýz spojených do
+jedného indexu. Tak vzniklo **šesť rozmerov** — dostupnosť, zelená rovnosť, tepelný
+komfort, kvalita MHD, chodeckosť, pokoj — každý počítaný per hex zo samostatného
+priestorového proxy, spojený do **Indexu kvality miesta** s **nastaviteľnými váhami**
+(používateľ si zvolí, čo je preňho dôležité, a mesto sa prepočíta naživo).
+
+**Ako som to postavil:** päť indikátorov som rozdelil medzi **paralelných agentov** —
+každý dostal špecifikáciu (vstupné dáta, výstupný formát zarovnaný na hexy, smer
+normalizácie) a sám napísal a spustil svoj Python pipeline. Potom **adversariálny
+overovací agent** každý kriticky preveril: má pole správnu dĺžku? je nuisance (teplo,
+hluk) správne invertovaný na kvalitu? je proxy obhájiteľný? Výsledky som krížovo
+overil **koreláciami** (zeleň↔teplo +0,54 — zeleň chladí; hluk↔MHD −0,36 — pri cestách
+viac spojov ale aj hluku). To je metóda, nie náhoda.
+
+A poctivosť: overovatelia našli reálne limity (dvojitá normalizácia, vertex-snapping
+pri chodeckosti, žiadne GTFS/satelit) — **nechal som ich napísané v caveats**, lebo
+kompetencia je vedieť, kde je tvoj odhad slabý, nie to skryť.
+
 ### 0. Z jadra na celé mesto — lebo jadro klamalo
 
 Prvá analýza pokrývala len husté centrum a vyšlo, že **97 % budov je v 15-min

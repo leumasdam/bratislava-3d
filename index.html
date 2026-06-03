@@ -45,57 +45,39 @@
       </section>
 
       <section class="block">
-        <div class="block-head"><h2>Šošovka — čím farbiť mesto</h2></div>
-        <div class="seg" id="lens-seg">
-          <button data-lens="access" class="active">15-min dostupnosť</button>
-          <button data-lens="height">Výška zástavby</button>
-        </div>
+        <div class="block-head"><h2>Atlas — zafarbiť mesto podľa</h2></div>
+        <div class="indsel" id="indsel"></div>
+        <p class="micro" id="ind-desc">Kompozitný index kvality života — 6 rozmerov v jednom čísle.</p>
       </section>
 
-      <section class="block only-access" id="block-catlens">
-        <div class="block-head">
-          <h2>Dostupnosť ku konkrétnej potrebe</h2>
-        </div>
-        <div class="catlens" id="catlens">
-          <button data-cat="" class="active">Celkovo</button>
-        </div>
-        <p class="micro" id="catlens-hint">Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b> — mapa „kde chýba".</p>
+      <section class="block" id="block-weights">
+        <div class="block-head"><h2>Váhy indexu</h2><span class="hint">čo je pre teba dôležité?</span></div>
+        <div class="weights" id="weights"></div>
+        <button class="wreset" id="weights-reset">Vyrovnať váhy</button>
+      </section>
+
+      <section class="block" id="block-catlens" hidden>
+        <div class="block-head"><h2>Kde chýba konkrétna potreba</h2></div>
+        <div class="catlens" id="catlens"></div>
+        <p class="micro" id="catlens-hint">Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b>.</p>
       </section>
 
       <section class="block">
         <div class="block-head">
-          <h2 id="legend-title">Index dostupnosti</h2>
+          <h2 id="legend-title">Index kvality miesta</h2>
           <span class="hint" id="legend-unit">0 = slabá · 100 = špička</span>
         </div>
         <div class="legend" id="legend"></div>
       </section>
 
-      <section class="block only-access" id="block-afilter">
-        <div class="block-head">
-          <h2>Filter dostupnosti</h2>
-          <span class="hint">index ≥ <span id="afilter-val">0</span></span>
-        </div>
-        <input type="range" id="access-filter" min="0" max="92" value="0" step="2" />
-        <p class="micro">Nechaj len budovy s indexom nad zvolenou hranicou — vystúpia najlepšie obslúžené štvrte.</p>
+      <section class="block">
+        <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni najhoršie oblasti</span></label>
+        <p class="micro">Nechá len hexy s nízkym skóre v zvolenom rozmere — kde mesto zaostáva.</p>
       </section>
 
-      <section class="block only-access" id="block-weak">
-        <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni slabé miesta (≤5/7)</span></label>
-        <p class="micro">Stlmí dobre obslúžené budovy a vytiahne pukliny v dostupnosti — aj v jadre ich pár je.</p>
-      </section>
-
-      <section class="block only-access" id="block-findings">
+      <section class="block" id="block-findings">
         <div class="block-head"><h2>Zistenia</h2></div>
         <div class="findings" id="findings"></div>
-      </section>
-
-      <section class="block only-height" id="block-hfilter">
-        <div class="block-head">
-          <h2>Filter výšky</h2>
-          <span class="hint"><span id="filter-val">0</span>&nbsp;m+</span>
-        </div>
-        <input type="range" id="height-filter" min="0" max="80" value="0" step="2" />
-        <p class="micro">Zobraz len budovy vyššie ako zvolená hodnota — vystúpia dominanty mesta.</p>
       </section>
 
       <section class="block">

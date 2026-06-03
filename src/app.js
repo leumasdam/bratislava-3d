@@ -25,12 +25,25 @@ const CAT_META = {
   park:    { emoji:'🌳', label:'Park',     color:'#45b39d', rad:500  },
 };
 const CAT_ORDER = ['obchod','zastavka','lekaren','lekar','skola','skolka','park'];
-let lens = 'access';        // 'access' | 'height'
-let catLens = '';           // '' = celkovo, inak kľúč kategórie
+/* ---- Atlas kvality života: 6 rozmerov + kompozit ---- */
+const INDICATORS = [
+  { id:'index',   key:'q_index',   emoji:'🎯', label:'Index kvality', desc:'Kompozitný index kvality života — vážený priemer 6 rozmerov.' },
+  { id:'access',  key:'q_access',  emoji:'🕒', label:'Dostupnosť',    desc:'15-min dostupnosť 7 denných potrieb pešo.' },
+  { id:'green',   key:'q_green',   emoji:'🌳', label:'Zeleň',         desc:'Zelená rovnosť — podiel a blízkosť zelene v okolí.' },
+  { id:'heat',    key:'q_heat',    emoji:'🌡️', label:'Tepl. komfort', desc:'Tepelný komfort — pomer zelene/vody voči betónu (proxy ostrova).' },
+  { id:'transit', key:'q_transit', emoji:'🚊', label:'MHD',           desc:'Kvalita MHD — hustota zastávok a blízkosť koľajovej dopravy.' },
+  { id:'walk',    key:'q_walk',    emoji:'🚶', label:'Chodeckosť',    desc:'Chodeckosť — jemnosť uličnej siete, bariéry diaľnic.' },
+  { id:'noise',   key:'q_noise',   emoji:'🔇', label:'Pokoj',         desc:'Pokoj — inverz dopravného hluku (vzdialenosť od ciest/tratí).' },
+];
+const META = Object.fromEntries(INDICATORS.map(i => [i.id, i]));
+const WEIGHTED = ['access', 'green', 'heat', 'transit', 'walk', 'noise'];
+let indicator = 'index';
+let weights = Object.fromEntries(WEIGHTED.map(k => [k, 1]));
+
+let catLens = '';           // '' = celkovo, inak kľúč kategórie (pri indikátore 'access')
 let gridData = null;
 let amByCat = {};           // cat -> [[lon,lat],...] pre klik-výpočet
 let weakOn = false;
-let heightMin = 0, accessMin = 0;
 let activeCats = new Set(CAT_ORDER);   // ktoré kategórie vybavenosti sa zobrazujú
 
 /* ---- orientačné body: pin = známe miesto, area = názov štvrte ---- */
@@ -260,8 +273,10 @@ map.on('load', async () => {
   applyLight('day');
   computeStats(buildings, grid);
   buildLandmarks();
-  setLens('access');
+  buildIndSel();
+  buildWeights();
   buildCatLens();
+  setIndicator('index');
   buildFindings(grid);
   wireUI();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
@@ -272,7 +287,7 @@ map.on('load', async () => {
   map.on('mouseleave', 'grid', () => map.getCanvas().style.cursor = '');
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, setLens, setCatLens, showSpotAt, openLandmarkCard, LANDMARKS, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, LANDMARKS, INDICATORS, TOUR };
   window.__ready = true;
 
   /* hover budov */
@@ -289,31 +304,93 @@ map.on('load', async () => {
     map.setFilter('buildings-hi', ['==', ['id'], -1]);
   });
 
-  /* klik kdekoľvek → 15-min analýza odtiaľto (+ budova, ak sme ju trafili) */
+  /* klik kdekoľvek → 15-min analýza + rozbor hexa (atlas) */
   map.on('click', (e) => {
-    const hit = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
-    showSpotAt(e.lngLat, hit.length ? hit[0].properties : null);
+    const b = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
+    const g = map.queryRenderedFeatures(e.point, { layers: ['grid'] });
+    showSpotAt(e.lngLat, b.length ? b[0].properties : null, g.length ? g[0].properties : null);
   });
 });
 
-/* zjednotené filtrovanie budov — podľa aktívnej šošovky */
-function applyBuildingFilter() {
-  const f = lens === 'height'
-    ? ['>=', ['get', 'h'], heightMin]
-    : ['>=', ['coalesce', ['get', 'idx'], 60], accessMin];
-  if (map.getLayer('buildings')) map.setFilter('buildings', f);
-}
 /* filter bodov vybavenosti podľa aktívnych kategórií */
 function applyAmenityFilter() {
   if (!map.getLayer('amenities')) return;
   map.setFilter('amenities', ['in', ['get', 'cat'], ['literal', [...activeCats]]]);
 }
+function buildingColorExpr() {
+  return ['interpolate', ['linear'], ['coalesce', ['get', 'idx'], 60], ...ACCESS_RAMP];
+}
 
-/* farebný výraz budov podľa šošovky */
-function buildingColorExpr(which) {
-  return which === 'height'
-    ? ['interpolate', ['linear'], ['get', 'h'], ...HEIGHT_RAMP]
-    : ['interpolate', ['linear'], ['coalesce', ['get', 'idx'], 60], ...ACCESS_RAMP];
+/* ---------- Atlas: výber indikátora ---------- */
+const MIN_RAMP_ATLAS = [0, '#34c47a', 4, '#8ec85a', 7, '#d8c84a', 10, '#e6a13c', 13, '#e0603b', 18, '#c0392b'];
+function gridColorExpr() {
+  if (indicator === 'access' && catLens)
+    return ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP_ATLAS];
+  return ['interpolate', ['linear'], ['coalesce', ['get', META[indicator].key], 50], ...ACCESS_RAMP];
+}
+function applyGridColor() {
+  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-extrusion-color', gridColorExpr());
+  // výška hexa = hodnota zvoleného indikátora (krajina kvality)
+  if (map.getLayer('grid'))
+    map.setPaintProperty('grid', 'fill-extrusion-height', ['interpolate', ['linear'], ['zoom'],
+      11.5, ['+', 15, ['*', 1.1, ['coalesce', ['get', META[indicator].key], 50]]],
+      13.5, 3]);
+}
+
+function buildIndSel() {
+  const wrap = document.getElementById('indsel');
+  wrap.innerHTML = INDICATORS.map(i =>
+    `<button data-ind="${i.id}" title="${i.label}"><span>${i.emoji}</span>${i.label}</button>`).join('');
+  wrap.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setIndicator(b.dataset.ind)));
+}
+function setIndicator(id) {
+  indicator = id;
+  if (id !== 'access') catLens = '';
+  document.querySelectorAll('#indsel button').forEach(b => b.classList.toggle('active', b.dataset.ind === id));
+  document.getElementById('ind-desc').textContent = META[id].desc;
+  document.getElementById('block-weights').hidden = (id !== 'index');
+  document.getElementById('block-catlens').hidden = (id !== 'access');
+  document.getElementById('legend-title').textContent = id === 'index' ? 'Index kvality miesta' : META[id].label;
+  applyGridColor();
+  applyWeak();
+  renderLegend();
+  // story
+  document.getElementById('story-title').textContent = id === 'index' ? 'Atlas kvality života' : META[id].label;
+  document.getElementById('story-text').innerHTML = META[id].desc
+    + (id === 'index' ? ' <b>Hýb váhami</b> nižšie a mesto sa prepočíta.' : ' <b>Klikni na hex</b> pre rozbor.');
+}
+
+/* ---------- váhy kompozitu ---------- */
+function buildWeights() {
+  const wrap = document.getElementById('weights');
+  wrap.innerHTML = WEIGHTED.map(k => {
+    const m = META[k];
+    return `<div class="wrow"><span class="wl">${m.emoji} ${m.label}</span>`
+      + `<input type="range" class="wsl" data-k="${k}" min="0" max="3" step="1" value="1">`
+      + `<span class="wv" id="wv-${k}">1×</span></div>`;
+  }).join('');
+  wrap.querySelectorAll('.wsl').forEach(s => s.addEventListener('input', () => {
+    weights[s.dataset.k] = +s.value;
+    document.getElementById('wv-' + s.dataset.k).textContent = s.value + '×';
+    recomputeIndex();
+  }));
+}
+function setWeights(obj) {            // pre testovanie / presety
+  Object.assign(weights, obj);
+  WEIGHTED.forEach(k => { const s = document.querySelector(`.wsl[data-k="${k}"]`); if (s) { s.value = weights[k]; document.getElementById('wv-' + k).textContent = weights[k] + '×'; } });
+  recomputeIndex();
+}
+function recomputeIndex() {
+  if (!gridData) return;
+  const tot = WEIGHTED.reduce((s, k) => s + weights[k], 0) || 1;
+  for (const f of gridData.features) {
+    let v = 0;
+    for (const k of WEIGHTED) v += weights[k] * (f.properties[META[k].key] || 0);
+    f.properties.q_index = Math.round(v / tot * 10) / 10;
+  }
+  const src = map.getSource('grid');
+  if (src) src.setData(gridData);
+  if (indicator === 'index') { applyGridColor(); buildFindings(gridData); }
 }
 
 /* ---------- stats (top bar) ---------- */
@@ -332,56 +409,37 @@ function computeStats(fc, grid) {
     `<b>${pctPoor} %</b> autozávislých`;
 }
 
-/* ---------- šošovka ---------- */
-function setLens(which) {
-  lens = which;
-  document.body.classList.toggle('lens-access', which === 'access');
-  document.body.classList.toggle('lens-height', which === 'height');
-  if (map.getLayer('buildings'))
-    map.setPaintProperty('buildings', 'fill-extrusion-color', buildingColorExpr(which));
-  document.querySelectorAll('#lens-seg button').forEach(b =>
-    b.classList.toggle('active', b.dataset.lens === which));
-  document.getElementById('legend-title').textContent =
-    which === 'height' ? 'Výška zástavby' : 'Index dostupnosti';
-  document.getElementById('legend-unit').textContent =
-    which === 'height' ? 'metre' : '0 = slabá · 100 = špička';
-  const st = document.getElementById('story-title');
-  const tx = document.getElementById('story-text');
-  if (which === 'height') {
-    st.textContent = 'Vertikálny profil mesta';
-    tx.innerHTML = 'Každá budova je vytlačená do výšky z reálnych dát OSM. Nízke historické jadro, '
-      + 'panelová Petržalka a nové veže — tri éry mesta naraz.';
+/* ---------- zvýrazni najhoršie oblasti (filter gridu) ---------- */
+function applyWeak() {
+  if (!map.getLayer('grid')) return;
+  if (weakOn) {
+    const key = indicator === 'access' && catLens ? null : META[indicator].key;
+    map.setFilter('grid', key ? ['<=', ['coalesce', ['get', key], 50], 45] : null);
   } else {
-    st.textContent = '15-minútové mesto';
-    tx.innerHTML = 'Hexagóny pokrývajú <b>obytné územie celej Bratislavy</b> — výška a farba = '
-      + 'koľko zo 7 denných potrieb máš pešo do 15 min. Jadro žiari, okraje sú autozávislé. '
-      + '<b>Klikni kamkoľvek</b> a zisti, čo tam máš v dosahu.';
+    map.setFilter('grid', null);
   }
-  renderLegend();
-  applyBuildingFilter();
 }
 
 function renderLegend() {
   const el = document.getElementById('legend');
-  if (lens === 'height') {
-    const ticks = [0, 15, 30, 60, 90, 130];
-    el.innerHTML = `<div class="legend-bar legend-bar-h"></div>`
-      + `<div class="legend-ticks">${ticks.map(t => `<span>${t}</span>`).join('')}</div>`;
-  } else if (catLens) {
-    // šošovka po kategórii → legenda v minútach pešo
+  document.getElementById('legend-unit').textContent =
+    (indicator === 'access' && catLens) ? 'minúty pešo' : '0 = slabá · 100 = špička';
+  if (indicator === 'access' && catLens) {
     el.innerHTML = `<div class="legend-bar legend-bar-m"></div>`
       + `<div class="legend-ticks"><span>0 min</span><span>9</span><span>18+ min</span></div>`
       + `<p class="micro hexnote">⬢ Hexagón = obytná oblasť. Farba = čas pešo k najbližšej ${CAT_META[catLens].label.toLowerCase()}.</p>`;
-  } else {
-    el.innerHTML = `<div class="legend-bar legend-bar-a"></div>`
-      + `<div class="legend-ticks"><span>slabá</span><span>dobrá</span><span>špička</span></div>`
-      + `<p class="micro hexnote">⬢ Každý <b>hexagón = obytná oblasť</b> (~200 m). Výška a farba = koľko zo 7 potrieb máš do 15 min. <b>Klikni naň</b> pre rozbor.</p>`
-      + `<div class="legend-cats" id="legend-cats">${CAT_ORDER.map(c => {
-          const m = CAT_META[c];
-          const off = activeCats.has(c) ? '' : ' off';
-          return `<span class="lc${off}" data-cat="${c}"><i style="background:${m.color}"></i>${m.emoji} ${m.label}</span>`;
-        }).join('')}</div>`
-      + `<p class="micro">Klikni na kategóriu — skry/zobraz jej body na mape.</p>`;
+    return;
+  }
+  let note = `⬢ Každý <b>hexagón = obytná oblasť</b> (~200 m). Výška a farba = <b>${(indicator === 'index' ? 'index kvality' : META[indicator].label.toLowerCase())}</b>. <b>Klikni naň</b> pre rozbor.`;
+  el.innerHTML = `<div class="legend-bar legend-bar-a"></div>`
+    + `<div class="legend-ticks"><span>slabá</span><span>dobrá</span><span>špička</span></div>`
+    + `<p class="micro hexnote">${note}</p>`;
+  if (indicator === 'access') {
+    el.innerHTML += `<div class="legend-cats" id="legend-cats">${CAT_ORDER.map(c => {
+        const m = CAT_META[c];
+        const off = activeCats.has(c) ? '' : ' off';
+        return `<span class="lc${off}" data-cat="${c}"><i style="background:${m.color}"></i>${m.emoji} ${m.label}</span>`;
+      }).join('')}</div><p class="micro">Klikni na kategóriu — skry/zobraz jej body na mape.</p>`;
     el.querySelectorAll('.lc').forEach(ch => ch.addEventListener('click', () => {
       const c = ch.dataset.cat;
       if (activeCats.has(c)) activeCats.delete(c); else activeCats.add(c);
@@ -403,13 +461,7 @@ function showIntro(grid) {
   document.getElementById('intro').hidden = false;
 }
 
-/* ---------- šošovka po kategórii ---------- */
-const MIN_RAMP = [0, '#34c47a', 4, '#8ec85a', 7, '#d8c84a', 10, '#e6a13c', 13, '#e0603b', 18, '#c0392b'];
-function gridColorExpr() {
-  return catLens
-    ? ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP]
-    : ['interpolate', ['linear'], ['get', 'idx'], ...ACCESS_RAMP];
-}
+/* ---------- šošovka po kategórii (pri indikátore Dostupnosť) ---------- */
 function buildCatLens() {
   const wrap = document.getElementById('catlens');
   wrap.innerHTML = '<button data-cat="" class="active">Celkovo</button>'
@@ -419,46 +471,40 @@ function buildCatLens() {
 function setCatLens(cat) {
   catLens = cat;
   document.querySelectorAll('#catlens button').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
-  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-extrusion-color', gridColorExpr());
+  applyGridColor();
   const hint = document.getElementById('catlens-hint');
-  if (cat) {
-    const m = CAT_META[cat];
-    hint.innerHTML = `Farba hexa = <b>minúty pešo k najbližšej (${m.label.toLowerCase()})</b>. `
-      + `Zelená blízko, červená ďaleko — <b>mapa „kde chýba ${m.label.toLowerCase()}".</b>`;
-    if (lens === 'access') renderLegend();
-  } else {
-    hint.innerHTML = 'Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b> — mapa „kde chýba".';
-    if (lens === 'access') renderLegend();
-  }
+  hint.innerHTML = cat
+    ? `Farba hexa = <b>minúty pešo k najbližšej (${CAT_META[cat].label.toLowerCase()})</b>. Zelená blízko, červená ďaleko — <b>mapa „kde chýba ${CAT_META[cat].label.toLowerCase()}".</b>`
+    : 'Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b>.';
+  renderLegend();
 }
 
-/* ---------- zistenia ---------- */
+/* ---------- zistenia (atlas: 6 rozmerov + kompozit) ---------- */
+function ACCESS_COLOR(v) {       // farba podľa skóre 0–100
+  return v >= 80 ? '#34c47a' : v >= 65 ? '#8ec85a' : v >= 50 ? '#d8c84a' : v >= 38 ? '#e6a13c' : '#e0603b';
+}
 function buildFindings(grid) {
   const cells = (grid && grid.features) || [];
   if (!cells.length) return;
   const n = cells.length;
-  // pokrytie po kategóriách: % hexov, kde je daná potreba do dochádzkového času
-  const cov = {};
-  for (const c of CAT_ORDER) {
-    const budget = Math.round(CAT_META[c].rad * 1.3 / 80);   // minúty zodpovedajúce polomeru
-    cov[c] = cells.filter(f => (f.properties['m_' + c] ?? 99) <= budget).length / n;
-  }
-  const sorted = CAT_ORDER.slice().sort((a, b) => cov[a] - cov[b]);
-  const worst = sorted[0], best = sorted[sorted.length - 1];
-  const good = cells.filter(f => (f.properties.sc || 0) >= 6).length;
+  const mean = k => cells.reduce((s, f) => s + (f.properties[k] || 0), 0) / n;
+  const dims = WEIGHTED.map(id => ({ id, m: mean(META[id].key) }));
+  dims.sort((a, b) => a.m - b.m);
+  const worst = dims[0], best = dims[dims.length - 1];
+  const idxMean = Math.round(mean('q_index'));
 
-  const bars = CAT_ORDER.map(c => {
-    const pct = Math.round(100 * cov[c]);
-    return `<div class="fbar"><span class="fb-l">${CAT_META[c].emoji} ${CAT_META[c].label}</span>`
-      + `<span class="fb-track"><i style="width:${pct}%;background:${CAT_META[c].color}"></i></span>`
-      + `<span class="fb-v">${pct}%</span></div>`;
+  const bars = WEIGHTED.map(id => {
+    const v = Math.round(mean(META[id].key));
+    return `<div class="fbar"><span class="fb-l">${META[id].emoji} ${META[id].label}</span>`
+      + `<span class="fb-track"><i style="width:${v}%;background:${ACCESS_COLOR(v)}"></i></span>`
+      + `<span class="fb-v">${v}</span></div>`;
   }).join('');
 
   document.getElementById('findings').innerHTML =
-    `<div class="fcard"><b>${Math.round(100 * good / n)} %</b> obytných oblastí má 6+/7 potrieb do 15 minút.</div>`
-    + `<div class="fcard warn">Najhoršie dostupné v meste: <b>${CAT_META[worst].label.toLowerCase()}</b> `
-    + `(len ${Math.round(100 * cov[worst])} % oblastí). Najlepšie: <b>${CAT_META[best].label.toLowerCase()}</b>.</div>`
-    + `<div class="fbars-title">Podiel obytných oblastí s dostupnosťou:</div>`
+    `<div class="fcard"><b>Index kvality miesta ⌀ ${idxMean}/100</b> naprieč obytnou Bratislavou.</div>`
+    + `<div class="fcard warn">Najslabší rozmer mesta: <b>${META[worst.id].label.toLowerCase()}</b> `
+    + `(⌀ ${Math.round(worst.m)}/100). Najsilnejší: <b>${META[best.id].label.toLowerCase()}</b> (⌀ ${Math.round(best.m)}).</div>`
+    + `<div class="fbars-title">Priemerné skóre rozmerov (0–100):</div>`
     + `<div class="fbars">${bars}</div>`;
 }
 
@@ -478,7 +524,7 @@ function nearestM(lngLat, cat) {
   }
   return best;
 }
-function showSpotAt(lngLat, bldg) {
+function showSpotAt(lngLat, bldg, hex) {
   const ll = [lngLat.lng, lngLat.lat];
   let score = 0;
   const rows = CAT_ORDER.map(c => {
@@ -502,14 +548,23 @@ function showSpotAt(lngLat, bldg) {
   document.getElementById('spot-rows').innerHTML = rows;
 
   const bEl = document.getElementById('spot-bldg');
+  let html = '';
+  if (hex && hex.q_index != null) {
+    html += `<div class="spot-atlas"><div class="sa-head"><span>Index kvality tu</span><b>${Math.round(hex.q_index)}/100</b></div>`
+      + WEIGHTED.map(id => {
+          const v = Math.round(hex[META[id].key] || 0);
+          return `<div class="sa-row"><span>${META[id].emoji} ${META[id].label}</span>`
+            + `<span class="sa-track"><i style="width:${v}%;background:${ACCESS_COLOR(v)}"></i></span>`
+            + `<span class="sa-v">${v}</span></div>`;
+        }).join('') + `</div>`;
+  }
   if (bldg && bldg.h) {
     const h = Math.round(bldg.h);
-    bEl.hidden = false;
-    bEl.innerHTML = `<span>🏢 ${bldg.name && bldg.name.length ? bldg.name : 'Budova'}</span>`
-      + `<b>${h} m · ≈ ${Math.max(1, Math.round(h / 3.2))} podl.</b>`;
-  } else {
-    bEl.hidden = true;
+    html += `<div class="spot-brow"><span>🏢 ${bldg.name && bldg.name.length ? bldg.name : 'Budova'}</span>`
+      + `<b>${h} m · ≈ ${Math.max(1, Math.round(h / 3.2))} podl.</b></div>`;
   }
+  bEl.hidden = !html;
+  bEl.innerHTML = html;
   document.getElementById('spot').hidden = false;
 }
 
@@ -630,9 +685,9 @@ function stopTour() {
 function wireUI() {
   renderLegend();
 
-  // šošovka
-  document.querySelectorAll('#lens-seg button').forEach(b =>
-    b.addEventListener('click', () => setLens(b.dataset.lens)));
+  // reset váh
+  document.getElementById('weights-reset').addEventListener('click', () =>
+    setWeights(Object.fromEntries(WEIGHTED.map(k => [k, 1]))));
 
   // layer toggles
   const toggle = (id, ...layers) => {
@@ -667,24 +722,10 @@ function wireUI() {
     showSpotAt({ lng: currentLm.at[0], lat: currentLm.at[1] }, null);
   });
 
-  // slabé miesta — zvýrazni budovy ≤5/7
+  // zvýrazni najhoršie oblasti (filter gridu podľa zvoleného rozmeru)
   document.getElementById('t-weak').addEventListener('change', (e) => {
     weakOn = e.target.checked;
-    map.setLayoutProperty('buildings-weak', 'visibility', weakOn ? 'visible' : 'none');
-    map.setPaintProperty('buildings', 'fill-extrusion-opacity', weakOn ? 0.14 : 0.92);
-  });
-
-  // height filter (výšková šošovka)
-  document.getElementById('height-filter').addEventListener('input', (e) => {
-    heightMin = +e.target.value;
-    document.getElementById('filter-val').textContent = heightMin;
-    applyBuildingFilter();
-  });
-  // access filter (dostupnostná šošovka)
-  document.getElementById('access-filter').addEventListener('input', (e) => {
-    accessMin = +e.target.value;
-    document.getElementById('afilter-val').textContent = accessMin;
-    applyBuildingFilter();
+    applyWeak();
   });
 
   // atmosphere

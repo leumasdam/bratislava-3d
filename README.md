@@ -1,13 +1,29 @@
-# Bratislava 3D — 15-minútové mesto
+# Bratislava 3D — Atlas kvality života
 
-Interaktívna **3D analýza dostupnosti** jadra Bratislavy, postavená výhradne
-z otvorených geodát (OpenStreetMap) a vyrenderovaná priamo v prehliadači.
-Žiadna podkladová mapa, žiadny API kľúč — mesto ako „svietiaci model", ktorý
-sa pýta: **koľko z toho, čo denne potrebuješ, máš pešo do 15 minút?**
+Interaktívny **3D atlas kvality života** Bratislavy z otvorených geodát
+(OpenStreetMap), vyrenderovaný priamo v prehliadači — žiadna podkladová mapa,
+žiadny API kľúč. **Šesť urbanistických rozmerov** spojených do jedného
+**Indexu kvality miesta** nad obytným územím celého mesta.
 
 **▶ Živá ukážka: https://leumasdam.github.io/bratislava-3d/**
 
 ![Bratislava 3D](screens/00-cover.png)
+
+## Atlas — 6 rozmerov kvality
+
+Každý hexagón obytného územia má skóre 0–100 v šiestich nezávislých analýzach:
+
+| Rozmer | Čo meria |
+|---|---|
+| 🕒 **Dostupnosť** | 15-min dostupnosť 7 denných potrieb pešo |
+| 🌳 **Zeleň** | zelená rovnosť — podiel a blízkosť zelene |
+| 🌡️ **Tepl. komfort** | pomer zelene/vody voči betónu (proxy tepelného ostrova) |
+| 🚊 **MHD** | hustota zastávok + blízkosť koľajovej dopravy |
+| 🚶 **Chodeckosť** | jemnosť uličnej siete, bariéry diaľnic |
+| 🔇 **Pokoj** | inverz dopravného hluku (vzdialenosť od ciest/tratí) |
+
+Spoja sa do **Indexu kvality miesta** — a **posuvníkmi váh** si zvolíš, čo je
+pre teba dôležité (mesto sa prepočíta naživo). Klik na hex ukáže celý jeho profil.
 
 ---
 
@@ -62,7 +78,15 @@ python fetch_wiki.py         # fotka + popis pamiatok zo sk.wikipedia
 python fetch_city_data.py    # vybavenosť + obytné územie cez celé mesto
 python make_grid.py          # hex mriežka dostupnosti (maska = residential)
 python fetch_city_context.py # Dunaj + hlavné cesty cez celé mesto (skelet)
+python fetch_city_land.py    # lesy/zeleň/plochy (terén) cez celé mesto
 python make_danube.py        # osi riek → reálna šírka bufferom (shapely)
+# --- Atlas: 6 indikátorov (compute_ind_* postavené tímom agentov) ---
+python compute_ind_green.py  # zelená rovnosť
+python compute_ind_heat.py   # tepelný komfort (proxy ostrova)
+python compute_ind_transit.py# kvalita MHD
+python compute_ind_walk.py   # chodeckosť
+python compute_ind_noise.py  # pokoj (inverz hluku)
+python integrate_atlas.py    # spojí 6 rozmerov do grid.geojson + kompozit q_index
 ```
 
 Verejné Overpass mirrory pod záťažou vracajú 504, preto sťahovanie:
