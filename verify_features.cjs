@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const ROOT = __dirname, PORT = 8744, OUT = path.join(ROOT, 'screens');
+const ROOT = __dirname, PORT = 8745, OUT = path.join(ROOT, 'screens');
 const MIME = { '.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.geojson':'application/json' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const server = http.createServer((req, res) => {
@@ -17,39 +17,51 @@ const server = http.createServer((req, res) => {
   const page = await b.newPage();
   await page.setViewport({ width: 1680, height: 1050, deviceScaleFactor: 1.4 });
   const errs = []; page.on('pageerror', e => errs.push(e.message));
+  page.on('requestfailed', r => { if (r.url().includes('wikimedia')) errs.push('IMG FAIL ' + r.url()); });
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0', timeout: 60000 });
   await page.waitForFunction('window.__ready===true', { timeout: 45000 }).catch(() => {});
   await sleep(2500);
 
-  // 1) klik do centra → spot karta (15-min rozpad)
-  await page.evaluate(() => window.__app.gotoStop(2, false)); // Staré Mesto
-  await sleep(2200);
-  await page.evaluate(() => window.__app.showSpotAt({ lng: 17.1090, lat: 48.1460 }, { h: 22, name: '' }));
-  await sleep(600);
-  const spot = await page.evaluate(() => {
-    const s = document.getElementById('spot');
-    return { hidden: s.hidden, score: document.getElementById('spot-score').textContent,
-             rows: document.querySelectorAll('.spot-row').length,
-             firstRow: document.querySelector('.spot-row')?.innerText };
+  // default hero (access lens, light-blue water, landmarks + amenities)
+  await page.evaluate(() => window.__app.gotoStop(0, false));
+  await sleep(1800);
+  await page.screenshot({ path: path.join(OUT, 'feat-01-default.png') });
+
+  // landmark card s fotom (Hrad)
+  await page.evaluate(() => {
+    const lm = window.__app.LANDMARKS.find(l => l.name === 'Bratislavský hrad');
+    window.__app.openLandmarkCard(lm);
   });
-  console.log('SPOT', JSON.stringify(spot));
-  await page.screenshot({ path: path.join(OUT, 'feat-01-click.png') });
+  await sleep(2500); // nechaj fotku načítať
+  const card = await page.evaluate(() => {
+    const c = document.getElementById('lmcard');
+    const ph = getComputedStyle(document.getElementById('lmcard-photo')).backgroundImage;
+    return { hidden: c.hidden, hasPhoto: ph && ph !== 'none', name: document.getElementById('lmcard-name').textContent,
+             desc: document.getElementById('lmcard-desc').textContent.slice(0, 60) };
+  });
+  console.log('LMCARD', JSON.stringify(card));
+  await page.screenshot({ path: path.join(OUT, 'feat-02-landmark.png') });
 
-  // 2) klik na okraj (slabšie) → nižšie skóre?
-  await page.evaluate(() => window.__app.showSpotAt({ lng: 17.0980, lat: 48.1280 }, null));
-  await sleep(500);
-  const edge = await page.evaluate(() => document.getElementById('spot-score').textContent);
-  console.log('EDGE score', edge);
+  // access filter ≥ 80
+  await page.evaluate(() => {
+    document.getElementById('lmcard-close').click();
+    const s = document.getElementById('access-filter'); s.value = 80;
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(1500);
+  await page.screenshot({ path: path.join(OUT, 'feat-03-accessfilter.png') });
 
-  // 3) slabé miesta toggle
-  await page.evaluate(() => { document.getElementById('t-weak').click(); window.__app.gotoStop(0, false); });
-  await sleep(2200);
-  await page.screenshot({ path: path.join(OUT, 'feat-02-weak.png') });
-
-  // 4) výšková šošovka
-  await page.evaluate(() => { document.getElementById('t-weak').click(); window.__app.setLens('height'); });
+  // category chips: nechaj len obchod + zastavka
+  await page.evaluate(() => {
+    const s = document.getElementById('access-filter'); s.value = 0; s.dispatchEvent(new Event('input', { bubbles: true }));
+    document.querySelectorAll('#legend-cats .lc').forEach(ch => {
+      if (!['obchod','zastavka'].includes(ch.dataset.cat)) ch.click();
+    });
+  });
   await sleep(1200);
-  await page.screenshot({ path: path.join(OUT, 'feat-03-height.png') });
+  const amen = await page.evaluate(() => document.querySelectorAll('#legend-cats .lc.off').length);
+  console.log('CHIPS off:', amen);
+  await page.screenshot({ path: path.join(OUT, 'feat-04-chips.png') });
 
   console.log('ERRORS', errs.length ? errs.slice(0, 8) : 'none');
   await b.close(); server.close();

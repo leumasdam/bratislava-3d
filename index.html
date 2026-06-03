@@ -60,6 +60,15 @@
         <div class="legend" id="legend"></div>
       </section>
 
+      <section class="block only-access" id="block-afilter">
+        <div class="block-head">
+          <h2>Filter dostupnosti</h2>
+          <span class="hint">index ≥ <span id="afilter-val">0</span></span>
+        </div>
+        <input type="range" id="access-filter" min="0" max="92" value="0" step="2" />
+        <p class="micro">Nechaj len budovy s indexom nad zvolenou hranicou — vystúpia najlepšie obslúžené štvrte.</p>
+      </section>
+
       <section class="block only-access" id="block-weak">
         <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni slabé miesta (≤5/7)</span></label>
         <p class="micro">Stlmí dobre obslúžené budovy a vytiahne pukliny v dostupnosti — aj v jadre ich pár je.</p>
@@ -78,7 +87,7 @@
         <div class="block-head"><h2>Vrstvy</h2></div>
         <div class="toggles">
           <label class="tg"><input type="checkbox" id="t-amenities" checked><span>Vybavenosť (body)</span></label>
-          <label class="tg"><input type="checkbox" id="t-landmarks"><span>Orientačné body</span></label>
+          <label class="tg"><input type="checkbox" id="t-landmarks" checked><span>Body záujmu (klik = detail)</span></label>
           <label class="tg"><input type="checkbox" id="t-buildings" checked><span>3D budovy</span></label>
           <label class="tg"><input type="checkbox" id="t-green" checked><span>Zeleň a parky</span></label>
           <label class="tg"><input type="checkbox" id="t-water" checked><span>Voda (Dunaj)</span></label>
@@ -129,6 +138,25 @@
     </div>
     <div class="spot-rows" id="spot-rows"></div>
     <div class="spot-bldg" id="spot-bldg" hidden></div>
+  </div>
+
+  <!-- rozklikávacia karta pamiatky (foto + fakty) -->
+  <div class="lmcard" id="lmcard" hidden>
+    <div class="lmcard-backdrop" id="lmcard-backdrop"></div>
+    <div class="lmcard-inner">
+      <button class="lmcard-close" id="lmcard-close" aria-label="Zavrieť">×</button>
+      <div class="lmcard-photo" id="lmcard-photo"></div>
+      <div class="lmcard-body">
+        <div class="lmcard-kicker" id="lmcard-kicker">Pamiatka</div>
+        <h3 class="lmcard-name" id="lmcard-name">—</h3>
+        <div class="lmcard-meta" id="lmcard-meta"></div>
+        <p class="lmcard-desc" id="lmcard-desc"></p>
+        <div class="lmcard-actions">
+          <button class="btn btn-primary" id="lmcard-spot">Čo je tu do 15 min?</button>
+        </div>
+        <div class="lmcard-src" id="lmcard-src"></div>
+      </div>
+    </div>
   </div>
 
   <div class="loader" id="loader">

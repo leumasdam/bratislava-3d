@@ -28,26 +28,35 @@ const CAT_ORDER = ['obchod','zastavka','lekaren','lekar','skola','skolka','park'
 let lens = 'access';        // 'access' | 'height'
 let amByCat = {};           // cat -> [[lon,lat],...] pre klik-výpočet
 let weakOn = false;
+let heightMin = 0, accessMin = 0;
+let activeCats = new Set(CAT_ORDER);   // ktoré kategórie vybavenosti sa zobrazujú
 
 /* ---- orientačné body: pin = známe miesto, area = názov štvrte ---- */
 const LANDMARKS = [
-  { t:'pin',  icon:'🏰', name:'Bratislavský hrad',     at:[17.1003,48.1419] },
-  { t:'pin',  icon:'🛸', name:'Most SNP · UFO',          at:[17.1045,48.1383] },
-  { t:'pin',  icon:'⛪', name:'Modrý kostolík',          at:[17.1170,48.1437] },
-  { t:'pin',  icon:'🏛️', name:'Grassalkovičov palác',    at:[17.1106,48.1486] },
-  { t:'pin',  icon:'🎭', name:'SND',                     at:[17.1238,48.1404] },
-  { t:'pin',  icon:'🏢', name:'Eurovea Tower · 168 m',   at:[17.1271,48.1398] },
-  { t:'pin',  icon:'🏙️', name:'Sky Park',                at:[17.1255,48.1446] },
-  { t:'pin',  icon:'🚌', name:'Stanica Nivy',            at:[17.1300,48.1462] },
-  { t:'pin',  icon:'🚉', name:'Hlavná stanica',          at:[17.1065,48.1590] },
-  { t:'pin',  icon:'🗿', name:'Slavín',                  at:[17.0972,48.1531] },
-  { t:'pin',  icon:'🌳', name:'Sad Janka Kráľa',         at:[17.1045,48.1340] },
-  { t:'area', name:'STARÉ MESTO',  at:[17.1085,48.1455] },
-  { t:'area', name:'PETRŽALKA',    at:[17.1075,48.1175] },
-  { t:'area', name:'NOVÉ MESTO',   at:[17.1290,48.1610] },
-  { t:'area', name:'RUŽINOV',      at:[17.1470,48.1530] },
+  { t:'pin', icon:'🏰', name:'Bratislavský hrad', at:[17.1003,48.1419], year:'9. stor. / obnova 1968', fact:'Dominanta nad Dunajom, dnes sídlo expozícií SNM.' },
+  { t:'pin', icon:'🛸', name:'Most SNP · UFO', at:[17.1045,48.1383], year:'1972', fact:'Most s vyhliadkou UFO — jediný slovenský člen Svetovej federácie veží.' },
+  { t:'pin', icon:'⛪', name:'Modrý kostolík', at:[17.1170,48.1437], year:'1913', fact:'Secesný skvost architekta Ödöna Lechnera.' },
+  { t:'pin', icon:'🏛️', name:'Grassalkovičov palác', at:[17.1106,48.1486], year:'1760', fact:'Sídlo prezidenta SR, za ním Francúzska záhrada.' },
+  { t:'pin', icon:'🎭', name:'SND', at:[17.1238,48.1404], year:'2007', fact:'Nová budova Slovenského národného divadla na nábreží.' },
+  { t:'pin', icon:'🏢', name:'Eurovea Tower', at:[17.1271,48.1398], year:'2023', fact:'Najvyššia budova Slovenska — 168 m.' },
+  { t:'pin', icon:'🏙️', name:'Sky Park', at:[17.1255,48.1446], year:'2020', fact:'Rezidencie podľa návrhu Zahy Hadid.' },
+  { t:'pin', icon:'🚌', name:'Stanica Nivy', at:[17.1300,48.1462], year:'2021', fact:'Autobusová stanica s parkom na streche.' },
+  { t:'pin', icon:'🚉', name:'Hlavná stanica', at:[17.1065,48.1590], year:'1871', fact:'Hlavná železničná stanica mesta.' },
+  { t:'pin', icon:'🗿', name:'Slavín', at:[17.0972,48.1531], year:'1960', fact:'Pamätník a vyhliadka nad mestom.' },
+  { t:'pin', icon:'🌳', name:'Sad Janka Kráľa', at:[17.1045,48.1340], year:'1776', fact:'Jeden z najstarších verejných parkov v Európe.' },
+  { t:'pin', icon:'🛍️', name:'Aupark', at:[17.1078,48.1247], year:'2001', fact:'Nákupné centrum pri Sade Janka Kráľa.' },
+  { t:'pin', icon:'🚪', name:'Michalská brána', at:[17.1067,48.1437], year:'14. stor.', fact:'Jediná zachovaná stredoveká mestská brána.' },
+  { t:'pin', icon:'🏛️', name:'Primaciálny palác', at:[17.1090,48.1443], year:'1781', fact:'Klasicistický palác so Zrkadlovou sieňou.' },
+  { t:'pin', icon:'🏬', name:'Stará tržnica', at:[17.1128,48.1448], year:'1910', fact:'Historická tržnica, dnes kultúrny priestor.' },
+  { t:'pin', icon:'🌲', name:'Horský park', at:[17.0960,48.1565], year:'1868', fact:'Lesopark nad centrom, pamiatková zóna.' },
+  { t:'pin', icon:'🌳', name:'Medická záhrada', at:[17.1180,48.1505], year:'18. stor.', fact:'Historická záhrada v centre mesta.' },
+  { t:'area', name:'STARÉ MESTO', at:[17.1085,48.1455] },
+  { t:'area', name:'PETRŽALKA',   at:[17.1075,48.1175] },
+  { t:'area', name:'NOVÉ MESTO',  at:[17.1290,48.1610] },
+  { t:'area', name:'RUŽINOV',     at:[17.1470,48.1530] },
 ];
 let lmMarkers = [];
+let lmInfo = {};            // name -> {img, desc} z Wikipédie
 let focusMarker = null;
 
 /* ---- atmosphere presets ---- */
@@ -99,12 +108,14 @@ function applyLight(mood) {
 
 /* ---------- build the scene ---------- */
 map.on('load', async () => {
-  const [buildings, green, water, roads, districts, amenities] = await Promise.all([
+  const [buildings, green, water, roads, districts, amenities, rivers, info] = await Promise.all([
     loadJSON('buildings.geojson'), loadJSON('green.geojson'),
     loadJSON('water.geojson'), loadJSON('roads.geojson'),
     loadJSON('districts.geojson'), loadJSON('amenities.geojson'),
+    loadJSON('rivers.geojson'), loadJSON('landmarks_info.json'),
   ]);
   buildingsData = buildings;
+  lmInfo = info && !info.features ? info : {};
   for (const c of CAT_ORDER) amByCat[c] = [];
   for (const f of amenities.features) {
     const c = f.properties.cat;
@@ -112,17 +123,27 @@ map.on('load', async () => {
   }
 
   map.addSource('water', { type: 'geojson', data: water });
+  map.addSource('rivers', { type: 'geojson', data: rivers });
   map.addSource('green', { type: 'geojson', data: green });
   map.addSource('roads', { type: 'geojson', data: roads });
   map.addSource('districts', { type: 'geojson', data: districts });
   map.addSource('amenities', { type: 'geojson', data: amenities });
   map.addSource('buildings', { type: 'geojson', data: buildings, generateId: true });
 
-  /* water */
+  /* water — svetlomodrá, nech Dunaj vystúpi */
   map.addLayer({ id: 'water', type: 'fill', source: 'water',
-    paint: { 'fill-color': '#0c2233', 'fill-opacity': 0.9 } });
+    paint: { 'fill-color': '#2b7fb8', 'fill-opacity': 0.78 } });
   map.addLayer({ id: 'water-edge', type: 'line', source: 'water',
-    paint: { 'line-color': '#1b4a63', 'line-width': 1 } });
+    paint: { 'line-color': '#7ec8ec', 'line-width': 1.1, 'line-opacity': 0.7 } });
+  /* rieky a kanály (Chorvátske rameno…) ako línie */
+  map.addLayer({ id: 'rivers', type: 'line', source: 'rivers',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#3f9fd0',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16,
+        ['match', ['get', 'kind'], 'river', 6, 'canal', 4, 2]],
+      'line-opacity': 0.75,
+    } });
 
   /* green */
   map.addLayer({ id: 'green', type: 'fill', source: 'green',
@@ -197,7 +218,7 @@ map.on('load', async () => {
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, setLens, showSpotAt, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setLens, showSpotAt, openLandmarkCard, LANDMARKS, TOUR };
   window.__ready = true;
 
   /* hover budov */
@@ -220,6 +241,19 @@ map.on('load', async () => {
     showSpotAt(e.lngLat, hit.length ? hit[0].properties : null);
   });
 });
+
+/* zjednotené filtrovanie budov — podľa aktívnej šošovky */
+function applyBuildingFilter() {
+  const f = lens === 'height'
+    ? ['>=', ['get', 'h'], heightMin]
+    : ['>=', ['coalesce', ['get', 'idx'], 60], accessMin];
+  if (map.getLayer('buildings')) map.setFilter('buildings', f);
+}
+/* filter bodov vybavenosti podľa aktívnych kategórií */
+function applyAmenityFilter() {
+  if (!map.getLayer('amenities')) return;
+  map.setFilter('amenities', ['in', ['get', 'cat'], ['literal', [...activeCats]]]);
+}
 
 /* farebný výraz budov podľa šošovky */
 function buildingColorExpr(which) {
@@ -266,6 +300,7 @@ function setLens(which) {
       + 'dostupnosti. <b>Klikni kamkoľvek</b> a zisti, čo máš v dosahu.';
   }
   renderLegend();
+  applyBuildingFilter();
 }
 
 function renderLegend() {
@@ -277,10 +312,18 @@ function renderLegend() {
   } else {
     el.innerHTML = `<div class="legend-bar legend-bar-a"></div>`
       + `<div class="legend-ticks"><span>slabá</span><span>dobrá</span><span>špička</span></div>`
-      + `<div class="legend-cats">${CAT_ORDER.map(c => {
+      + `<div class="legend-cats" id="legend-cats">${CAT_ORDER.map(c => {
           const m = CAT_META[c];
-          return `<span class="lc"><i style="background:${m.color}"></i>${m.emoji} ${m.label}</span>`;
-        }).join('')}</div>`;
+          const off = activeCats.has(c) ? '' : ' off';
+          return `<span class="lc${off}" data-cat="${c}"><i style="background:${m.color}"></i>${m.emoji} ${m.label}</span>`;
+        }).join('')}</div>`
+      + `<p class="micro">Klikni na kategóriu — skry/zobraz jej body na mape.</p>`;
+    el.querySelectorAll('.lc').forEach(ch => ch.addEventListener('click', () => {
+      const c = ch.dataset.cat;
+      if (activeCats.has(c)) activeCats.delete(c); else activeCats.add(c);
+      ch.classList.toggle('off', !activeCats.has(c));
+      applyAmenityFilter();
+    }));
   }
 }
 
@@ -306,7 +349,8 @@ function showSpotAt(lngLat, bldg) {
   const rows = CAT_ORDER.map(c => {
     const m = CAT_META[c];
     const d = nearestM(ll, c);
-    const min = Math.max(1, Math.round(d / 80));   // 80 m/min ≈ 4,8 km/h
+    // 80 m/min ≈ 4,8 km/h, ×1,3 detour faktor uličnej siete (vzdušná čiara je kratšia)
+    const min = Math.max(1, Math.round(d * 1.3 / 80));
     const ok = d <= m.rad;
     if (ok) score++;
     return `<div class="spot-row ${ok ? 'ok' : 'no'}">
@@ -344,6 +388,8 @@ function buildLandmarks() {
     } else {
       el.className = 'lm lm-pin';
       el.innerHTML = `<span class="lm-dot">${lm.icon}</span><span class="lm-label">${lm.name}</span>`;
+      el.title = 'Klikni pre detail';
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); openLandmarkCard(lm); });
     }
     const m = new maplibregl.Marker({ element: el, anchor: lm.t === 'area' ? 'center' : 'bottom',
         offset: lm.t === 'area' ? [0, 0] : [0, 14] })   // pin nižšie, nech sa nekryje s názvami
@@ -359,6 +405,32 @@ function buildLandmarks() {
 function showLandmarks(v) {
   document.body.classList.toggle('hide-lm', !v);
 }
+
+/* rozklikávacia karta pamiatky (foto + fakty z Wikipédie) */
+let currentLm = null;
+function openLandmarkCard(lm) {
+  currentLm = lm;
+  const info = lmInfo[lm.name] || {};
+  const card = document.getElementById('lmcard');
+  const photo = document.getElementById('lmcard-photo');
+  if (info.img) {
+    photo.style.backgroundImage = `url("${info.img}")`;
+    card.classList.remove('no-photo');
+  } else {
+    photo.style.backgroundImage = '';
+    card.classList.add('no-photo');
+  }
+  document.getElementById('lmcard-kicker').textContent = `${lm.icon}  Bod záujmu`;
+  document.getElementById('lmcard-name').textContent = lm.name;
+  document.getElementById('lmcard-meta').innerHTML =
+    `${lm.year ? `<b>${lm.year}</b> · ` : ''}${lm.fact || ''}`;
+  document.getElementById('lmcard-desc').textContent = info.desc || '';
+  document.getElementById('lmcard-src').textContent =
+    info.img ? 'Foto a text © prispievatelia Wikipédie (CC BY-SA)'
+             : info.desc ? 'Text © prispievatelia Wikipédie (CC BY-SA)' : '';
+  card.hidden = false;
+}
+function closeLandmarkCard() { document.getElementById('lmcard').hidden = true; }
 
 /* ---------- guided tour ---------- */
 const TOUR = [
@@ -437,13 +509,22 @@ function wireUI() {
   toggle('t-buildings', 'buildings', 'buildings-hi');
   toggle('t-amenities', 'amenities');
   toggle('t-green', 'green', 'green-edge');
-  toggle('t-water', 'water', 'water-edge');
+  toggle('t-water', 'water', 'water-edge', 'rivers');
   toggle('t-roads', 'roads');
   toggle('t-districts', 'districts');
 
   // landmarks are DOM markers, not map layers
   document.getElementById('t-landmarks').addEventListener('change', (e) => showLandmarks(e.target.checked));
-  showLandmarks(false);   // default vyp — vybavenosť je dôležitejšia
+
+  // karta pamiatky — zatvorenie + akcia
+  document.getElementById('lmcard-close').addEventListener('click', closeLandmarkCard);
+  document.getElementById('lmcard-backdrop').addEventListener('click', closeLandmarkCard);
+  document.getElementById('lmcard-spot').addEventListener('click', () => {
+    if (!currentLm) return;
+    closeLandmarkCard();
+    map.flyTo({ center: currentLm.at, zoom: 15.6, pitch: 62, duration: 1600, essential: true });
+    showSpotAt({ lng: currentLm.at[0], lat: currentLm.at[1] }, null);
+  });
 
   // slabé miesta — zvýrazni budovy ≤5/7
   document.getElementById('t-weak').addEventListener('change', (e) => {
@@ -452,12 +533,17 @@ function wireUI() {
     map.setPaintProperty('buildings', 'fill-extrusion-opacity', weakOn ? 0.14 : 0.92);
   });
 
-  // height filter
-  const hf = document.getElementById('height-filter');
-  hf.addEventListener('input', (e) => {
-    const v = +e.target.value;
-    document.getElementById('filter-val').textContent = v;
-    map.setFilter('buildings', ['>=', ['get', 'h'], v]);
+  // height filter (výšková šošovka)
+  document.getElementById('height-filter').addEventListener('input', (e) => {
+    heightMin = +e.target.value;
+    document.getElementById('filter-val').textContent = heightMin;
+    applyBuildingFilter();
+  });
+  // access filter (dostupnostná šošovka)
+  document.getElementById('access-filter').addEventListener('input', (e) => {
+    accessMin = +e.target.value;
+    document.getElementById('afilter-val').textContent = accessMin;
+    applyBuildingFilter();
   });
 
   // atmosphere

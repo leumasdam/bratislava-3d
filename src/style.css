@@ -191,6 +191,34 @@ body.touring .lm-area{opacity:.22}
 .spot-bldg b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .spot-bldg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ---------- karta pamiatky (modal s fotom) ---------- */
+.lmcard{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px}
+.lmcard[hidden]{display:none}
+.lmcard-backdrop{position:absolute;inset:0;background:rgba(4,6,10,.62);backdrop-filter:blur(3px)}
+.lmcard-inner{position:relative;width:min(420px,92vw);max-height:88vh;display:flex;flex-direction:column;
+  overflow:hidden;background:var(--glass-2);backdrop-filter:blur(22px);border:1px solid var(--line);
+  border-radius:18px;box-shadow:var(--shadow);animation:rise .3s cubic-bezier(.2,.8,.2,1)}
+.lmcard-photo{height:200px;flex:none;background-size:cover;background-position:center;border-bottom:1px solid var(--line)}
+.lmcard.no-photo .lmcard-photo{display:none}
+.lmcard-body{padding:18px 20px 20px;overflow-y:auto}
+.lmcard-kicker{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);margin-bottom:6px}
+.lmcard-name{font-family:"Space Grotesk";font-size:21px;font-weight:600;margin:0 0 8px;line-height:1.15}
+.lmcard-meta{font-size:13px;color:var(--ink-dim);margin-bottom:12px;line-height:1.5}
+.lmcard-meta b{color:var(--accent)}
+.lmcard-desc{font-size:13.5px;line-height:1.6;color:var(--ink-dim);margin:0 0 16px}
+.lmcard-actions{margin-bottom:12px}
+.lmcard-actions .btn{width:100%}
+.lmcard-src{font-size:10.5px;color:var(--ink-faint);line-height:1.4}
+.lmcard-close{position:absolute;top:10px;right:12px;z-index:2;width:32px;height:32px;border-radius:50%;
+  border:0;background:rgba(0,0,0,.5);color:#fff;font-size:20px;cursor:pointer;line-height:1;
+  display:flex;align-items:center;justify-content:center}
+.lmcard-close:hover{background:rgba(0,0,0,.78)}
+
+/* klikateľné čipy kategórií */
+.legend-cats .lc{cursor:pointer;transition:opacity .15s,color .15s}
+.legend-cats .lc:hover{color:var(--ink)}
+.legend-cats .lc.off{opacity:.32;text-decoration:line-through}
+
 /* ---------- inspector ---------- */
 .inspector{position:absolute;right:18px;bottom:18px;z-index:7;width:268px;
   background:var(--glass-2);backdrop-filter:blur(20px);border:1px solid var(--line);
