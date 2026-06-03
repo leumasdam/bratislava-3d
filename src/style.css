@@ -79,9 +79,17 @@ body::after{
 
 /* legend */
 .legend{display:flex;flex-direction:column;gap:7px}
-.legend-bar{height:10px;border-radius:6px;
-  background:linear-gradient(90deg,#21303a,#1f6f78,#46e0d0,#bfe27a,#ffc24b,#ff7a45)}
+.legend-bar{height:10px;border-radius:6px}
+.legend-bar-h{background:linear-gradient(90deg,#21303a,#1f6f78,#46e0d0,#bfe27a,#ffc24b,#ff7a45)}
+.legend-bar-a{background:linear-gradient(90deg,#c0392b,#e0603b,#e6a13c,#d8c84a,#8ec85a,#34c47a)}
 .legend-ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+.legend-cats{display:flex;flex-wrap:wrap;gap:7px 13px;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.legend-cats .lc{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-dim)}
+.legend-cats .lc i{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* kontextové bloky podľa šošovky */
+body:not(.lens-access) .only-access{display:none}
+body:not(.lens-height) .only-height{display:none}
 
 /* slider */
 input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:3px;
@@ -150,6 +158,39 @@ body.touring .lm-area{opacity:.22}
   background:var(--accent-warm);padding:4px 13px;border-radius:999px;white-space:nowrap;letter-spacing:.3px;
   box-shadow:0 8px 22px -5px rgba(255,122,69,.6)}
 
+/* ---------- spot karta (15-min analýza) ---------- */
+.spot{position:absolute;right:18px;bottom:18px;z-index:7;width:292px;
+  background:var(--glass-2);backdrop-filter:blur(20px);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow);padding:16px 16px 14px;
+  animation:rise .3s cubic-bezier(.2,.8,.2,1)}
+.spot-head{display:flex;align-items:center;gap:13px;margin-bottom:13px}
+.spot-score{display:flex;align-items:baseline;justify-content:center;gap:1px;flex:none;
+  width:54px;height:54px;border-radius:13px;font-family:"Space Grotesk";line-height:1;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);transition:.3s}
+.spot-score b{font-size:27px;color:var(--ink)}
+.spot-score span{font-size:13px;color:var(--ink-faint)}
+.spot-score[data-s="6"],.spot-score[data-s="7"]{background:rgba(52,196,122,.16);border-color:rgba(52,196,122,.45)}
+.spot-score[data-s="6"] b,.spot-score[data-s="7"] b{color:#46d98a}
+.spot-score[data-s="0"],.spot-score[data-s="1"],.spot-score[data-s="2"],.spot-score[data-s="3"]{background:rgba(214,69,69,.16);border-color:rgba(214,69,69,.45)}
+.spot-score[data-s="0"] b,.spot-score[data-s="1"] b,.spot-score[data-s="2"] b,.spot-score[data-s="3"] b{color:#e0603b}
+.spot-title{font-family:"Space Grotesk";font-size:15px;font-weight:600;color:var(--ink);line-height:1.1}
+.spot-sub{font-size:12px;color:var(--ink-dim);margin-top:3px}
+.spot-rows{display:flex;flex-direction:column}
+.spot-row{display:flex;align-items:center;gap:9px;padding:5px 2px;font-size:12.5px;border-top:1px solid rgba(255,255,255,.04)}
+.spot-row:first-child{border-top:0}
+.spot-row .sr-ic{font-size:13px;width:18px;text-align:center}
+.spot-row .sr-l{flex:1;color:var(--ink-dim)}
+.spot-row .sr-m{font-variant-numeric:tabular-nums;color:var(--ink-faint);font-size:12px}
+.spot-row .sr-x{width:15px;text-align:center;font-weight:700}
+.spot-row.ok .sr-l{color:var(--ink)}
+.spot-row.ok .sr-x{color:#46d98a}
+.spot-row.no{opacity:.5}
+.spot-row.no .sr-x{color:#e0603b}
+.spot-bldg{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:11px;padding-top:11px;
+  border-top:1px solid var(--line);font-size:12px;color:var(--ink-dim)}
+.spot-bldg b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.spot-bldg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* ---------- inspector ---------- */
 .inspector{position:absolute;right:18px;bottom:18px;z-index:7;width:268px;
   background:var(--glass-2);backdrop-filter:blur(20px);border:1px solid var(--line);
@@ -190,5 +231,5 @@ body.touring .lm-area{opacity:.22}
   .panel-reveal{top:auto;bottom:18px;left:50%;transform:translateX(-50%);width:auto;padding:0 18px;font-size:13px;border-radius:999px}
   .panel-reveal.show{height:38px}
   .topmeta{display:none}
-  .inspector{left:14px;right:14px;width:auto;bottom:auto;top:70px}
+  .inspector,.spot{left:14px;right:14px;width:auto;bottom:auto;top:64px}
 }

@@ -36,43 +36,55 @@
 
     <div class="panel-scroll">
       <section class="story">
-        <h1 id="story-title">Vertikálny profil mesta</h1>
+        <h1 id="story-title">15-minútové mesto</h1>
         <p id="story-text">
-          Každá budova je vytlačená do výšky na základe reálnych dát z OpenStreetMap.
-          Nízke historické jadro, panelová stena Petržalky za riekou a nové veže —
-          jeden pohľad, tri éry mesta.
+          Koľko zo 7 denných potrieb — škola, škôlka, lekár, lekáreň, obchod, zastávka, park —
+          máš pešo do 15 minút? Mesto je zafarbené podľa dostupnosti.
+          <b>Klikni kamkoľvek</b> a zisti, čo máš v dosahu.
         </p>
       </section>
 
       <section class="block">
-        <div class="block-head">
-          <h2>Vrstvy</h2>
-        </div>
-        <div class="toggles">
-          <label class="tg"><input type="checkbox" id="t-landmarks" checked><span>Orientačné body</span></label>
-          <label class="tg"><input type="checkbox" id="t-buildings" checked><span>3D budovy</span></label>
-          <label class="tg"><input type="checkbox" id="t-green" checked><span>Zeleň a parky</span></label>
-          <label class="tg"><input type="checkbox" id="t-water" checked><span>Voda (Dunaj)</span></label>
-          <label class="tg"><input type="checkbox" id="t-roads" checked><span>Ulice a železnica</span></label>
-          <label class="tg"><input type="checkbox" id="t-districts"><span>Hranice mestských častí</span></label>
+        <div class="block-head"><h2>Šošovka — čím farbiť mesto</h2></div>
+        <div class="seg" id="lens-seg">
+          <button data-lens="access" class="active">15-min dostupnosť</button>
+          <button data-lens="height">Výška zástavby</button>
         </div>
       </section>
 
       <section class="block">
         <div class="block-head">
-          <h2>Výška zástavby</h2>
-          <span class="hint" id="legend-unit">metre</span>
+          <h2 id="legend-title">Index dostupnosti</h2>
+          <span class="hint" id="legend-unit">0 = slabá · 100 = špička</span>
         </div>
         <div class="legend" id="legend"></div>
       </section>
 
-      <section class="block">
+      <section class="block only-access" id="block-weak">
+        <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni slabé miesta (≤5/7)</span></label>
+        <p class="micro">Stlmí dobre obslúžené budovy a vytiahne pukliny v dostupnosti — aj v jadre ich pár je.</p>
+      </section>
+
+      <section class="block only-height" id="block-hfilter">
         <div class="block-head">
           <h2>Filter výšky</h2>
           <span class="hint"><span id="filter-val">0</span>&nbsp;m+</span>
         </div>
         <input type="range" id="height-filter" min="0" max="80" value="0" step="2" />
         <p class="micro">Zobraz len budovy vyššie ako zvolená hodnota — vystúpia dominanty mesta.</p>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>Vrstvy</h2></div>
+        <div class="toggles">
+          <label class="tg"><input type="checkbox" id="t-amenities" checked><span>Vybavenosť (body)</span></label>
+          <label class="tg"><input type="checkbox" id="t-landmarks"><span>Orientačné body</span></label>
+          <label class="tg"><input type="checkbox" id="t-buildings" checked><span>3D budovy</span></label>
+          <label class="tg"><input type="checkbox" id="t-green" checked><span>Zeleň a parky</span></label>
+          <label class="tg"><input type="checkbox" id="t-water" checked><span>Voda (Dunaj)</span></label>
+          <label class="tg"><input type="checkbox" id="t-roads" checked><span>Ulice a železnica</span></label>
+          <label class="tg"><input type="checkbox" id="t-districts"><span>Hranice mestských častí</span></label>
+        </div>
       </section>
 
       <section class="block">
@@ -105,16 +117,18 @@
 
   <button class="panel-reveal" id="panel-reveal" aria-label="Zobraziť panel">›</button>
 
-  <!-- building inspector card -->
-  <div class="inspector" id="inspector" hidden>
-    <button class="insp-close" id="insp-close" aria-label="Zavrieť">×</button>
-    <div class="insp-kind" id="insp-kind">budova</div>
-    <div class="insp-name" id="insp-name">Bez názvu</div>
-    <div class="insp-rows">
-      <div class="insp-row"><span>Výška</span><b id="insp-height">— m</b></div>
-      <div class="insp-row"><span>Podlaží (odhad)</span><b id="insp-levels">—</b></div>
+  <!-- spot readout: 15-min dostupnosť odtiaľto (+ voliteľne budova) -->
+  <div class="spot" id="spot" hidden>
+    <button class="insp-close" id="spot-close" aria-label="Zavrieť">×</button>
+    <div class="spot-head">
+      <div class="spot-score"><b id="spot-score">—</b><span>/7</span></div>
+      <div class="spot-head-txt">
+        <div class="spot-title">do 15 minút pešo</div>
+        <div class="spot-sub" id="spot-sub">klikni na mapu</div>
+      </div>
     </div>
-    <div class="insp-bar"><div id="insp-bar-fill"></div></div>
+    <div class="spot-rows" id="spot-rows"></div>
+    <div class="spot-bldg" id="spot-bldg" hidden></div>
   </div>
 
   <div class="loader" id="loader">

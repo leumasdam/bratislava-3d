@@ -9,6 +9,25 @@ const HEIGHT_RAMP = [
   0, '#21303a', 8, '#27606b', 15, '#2f8f8a', 25, '#46e0d0',
   40, '#bfe27a', 60, '#ffc24b', 90, '#ff7a45', 130, '#ff4d4d',
 ];
+/* ---- 15-min index → color ramp (0–100, červená = slabá, zelená = špička) ---- */
+const ACCESS_RAMP = [
+  45, '#c0392b', 56, '#e0603b', 66, '#e6a13c', 75, '#d8c84a',
+  83, '#8ec85a', 92, '#34c47a',
+];
+/* ---- kategórie dennej vybavenosti (poradie = riadky v karte) ---- */
+const CAT_META = {
+  obchod:  { emoji:'🛒', label:'Obchod',   color:'#5dade2', rad:700  },
+  zastavka:{ emoji:'🚏', label:'Zastávka', color:'#58d68d', rad:400  },
+  lekaren: { emoji:'💊', label:'Lekáreň',  color:'#bb8fce', rad:700  },
+  lekar:   { emoji:'🩺', label:'Lekár',    color:'#ec7063', rad:1000 },
+  skola:   { emoji:'🏫', label:'Škola',    color:'#f4d03f', rad:1000 },
+  skolka:  { emoji:'🧸', label:'Škôlka',   color:'#f5b041', rad:800  },
+  park:    { emoji:'🌳', label:'Park',     color:'#45b39d', rad:500  },
+};
+const CAT_ORDER = ['obchod','zastavka','lekaren','lekar','skola','skolka','park'];
+let lens = 'access';        // 'access' | 'height'
+let amByCat = {};           // cat -> [[lon,lat],...] pre klik-výpočet
+let weakOn = false;
 
 /* ---- orientačné body: pin = známe miesto, area = názov štvrte ---- */
 const LANDMARKS = [
@@ -80,17 +99,23 @@ function applyLight(mood) {
 
 /* ---------- build the scene ---------- */
 map.on('load', async () => {
-  const [buildings, green, water, roads, districts] = await Promise.all([
+  const [buildings, green, water, roads, districts, amenities] = await Promise.all([
     loadJSON('buildings.geojson'), loadJSON('green.geojson'),
     loadJSON('water.geojson'), loadJSON('roads.geojson'),
-    loadJSON('districts.geojson'),
+    loadJSON('districts.geojson'), loadJSON('amenities.geojson'),
   ]);
   buildingsData = buildings;
+  for (const c of CAT_ORDER) amByCat[c] = [];
+  for (const f of amenities.features) {
+    const c = f.properties.cat;
+    if (amByCat[c]) amByCat[c].push(f.geometry.coordinates);
+  }
 
   map.addSource('water', { type: 'geojson', data: water });
   map.addSource('green', { type: 'geojson', data: green });
   map.addSource('roads', { type: 'geojson', data: roads });
   map.addSource('districts', { type: 'geojson', data: districts });
+  map.addSource('amenities', { type: 'geojson', data: amenities });
   map.addSource('buildings', { type: 'geojson', data: buildings, generateId: true });
 
   /* water */
@@ -122,14 +147,26 @@ map.on('load', async () => {
     paint: { 'line-color': '#46e0d0', 'line-width': 1.4, 'line-opacity': 0.55,
       'line-dasharray': [3, 2] } });
 
-  /* 3D buildings */
+  /* 3D buildings (farba sa nastaví cez setLens) */
   map.addLayer({ id: 'buildings', type: 'fill-extrusion', source: 'buildings',
     paint: {
-      'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'h'], ...HEIGHT_RAMP],
+      'fill-extrusion-color': buildingColorExpr('access'),
       'fill-extrusion-height': ['get', 'h'],
       'fill-extrusion-base': ['get', 'min'],
       'fill-extrusion-opacity': 0.92,
       'fill-extrusion-vertical-gradient': true,
+    } });
+
+  /* slabé miesta — len budovy ≤5/7, jasná červená (default skryté) */
+  map.addLayer({ id: 'buildings-weak', type: 'fill-extrusion', source: 'buildings',
+    filter: ['<=', ['get', 'sc'], 5],
+    layout: { visibility: 'none' },
+    paint: {
+      'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'sc'],
+        0, '#ff2d2d', 3, '#ff5a3c', 5, '#ff8c42'],
+      'fill-extrusion-height': ['get', 'h'],
+      'fill-extrusion-base': ['get', 'min'],
+      'fill-extrusion-opacity': 0.97,
     } });
 
   /* hover highlight */
@@ -139,22 +176,33 @@ map.on('load', async () => {
       'fill-extrusion-color': '#ffffff',
       'fill-extrusion-height': ['get', 'h'],
       'fill-extrusion-base': ['get', 'min'],
-      'fill-extrusion-opacity': 0.55,
+      'fill-extrusion-opacity': 0.4,
+    } });
+
+  /* vybavenosť — farebné body podľa kategórie */
+  map.addLayer({ id: 'amenities', type: 'circle', source: 'amenities',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2.2, 16, 5.5],
+      'circle-color': ['match', ['get', 'cat'],
+        ...Object.entries(CAT_META).flatMap(([k, v]) => [k, v.color]), '#ffffff'],
+      'circle-stroke-width': 1, 'circle-stroke-color': 'rgba(0,0,0,.55)',
+      'circle-opacity': 0.92,
     } });
 
   applyLight('day');
   computeStats(buildings);
   buildLandmarks();
+  setLens('access');
   wireUI();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setLens, showSpotAt, TOUR };
   window.__ready = true;
 
-  /* hover */
+  /* hover budov */
   map.on('mousemove', 'buildings', (e) => {
-    map.getCanvas().style.cursor = 'pointer';
+    map.getCanvas().style.cursor = 'crosshair';
     if (e.features.length) {
       hoveredId = e.features[0].id;
       map.setFilter('buildings-hi', ['==', ['id'], hoveredId]);
@@ -165,37 +213,125 @@ map.on('load', async () => {
     hoveredId = null;
     map.setFilter('buildings-hi', ['==', ['id'], -1]);
   });
-  map.on('click', 'buildings', (e) => {
-    if (e.features.length) openInspector(e.features[0].properties);
+
+  /* klik kdekoľvek → 15-min analýza odtiaľto (+ budova, ak sme ju trafili) */
+  map.on('click', (e) => {
+    const hit = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
+    showSpotAt(e.lngLat, hit.length ? hit[0].properties : null);
   });
 });
 
-/* ---------- stats ---------- */
-function computeStats(fc) {
-  const n = fc.features.length;
-  let tallest = 0;
-  for (const f of fc.features) tallest = Math.max(tallest, f.properties.h || 0);
-  document.getElementById('stat-buildings').innerHTML = `<b>${n.toLocaleString('sk')}</b> budov`;
-  document.getElementById('stat-tallest').innerHTML = `najvyššia <b>${Math.round(tallest)} m</b>`;
+/* farebný výraz budov podľa šošovky */
+function buildingColorExpr(which) {
+  return which === 'height'
+    ? ['interpolate', ['linear'], ['get', 'h'], ...HEIGHT_RAMP]
+    : ['interpolate', ['linear'], ['coalesce', ['get', 'idx'], 60], ...ACCESS_RAMP];
 }
 
-/* ---------- inspector ---------- */
-function openInspector(p) {
-  const el = document.getElementById('inspector');
-  el.hidden = false;
-  const h = Math.round(p.h);
-  document.getElementById('insp-kind').textContent = kindLabel(p.kind);
-  document.getElementById('insp-name').textContent = p.name && p.name.length ? p.name : 'Budova bez názvu';
-  document.getElementById('insp-height').textContent = `${h} m`;
-  document.getElementById('insp-levels').textContent = `≈ ${Math.max(1, Math.round(h / 3.2))}`;
-  document.getElementById('insp-bar-fill').style.width = Math.min(100, (h / 130) * 100) + '%';
+/* ---------- stats (top bar) ---------- */
+function computeStats(fc) {
+  const n = fc.features.length;
+  let tallest = 0, good = 0;
+  for (const f of fc.features) {
+    tallest = Math.max(tallest, f.properties.h || 0);
+    if ((f.properties.sc || 0) >= 6) good++;
+  }
+  const pct = Math.round(100 * good / n);
+  document.getElementById('stat-buildings').innerHTML = `<b>${n.toLocaleString('sk')}</b> budov`;
+  document.getElementById('stat-tallest').innerHTML = `<b>${pct} %</b> má 6+/7 do 15 min`;
 }
-function kindLabel(k) {
-  const map = { yes:'budova', apartments:'bytový dom', house:'rodinný dom', residential:'obytná',
-    commercial:'komerčná', retail:'obchod', office:'administratíva', industrial:'priemysel',
-    church:'kostol', hospital:'nemocnica', school:'škola', university:'univerzita',
-    hotel:'hotel', public:'verejná', garage:'garáž', roof:'prístrešok', construction:'výstavba' };
-  return map[k] || (k || 'budova');
+
+/* ---------- šošovka ---------- */
+function setLens(which) {
+  lens = which;
+  document.body.classList.toggle('lens-access', which === 'access');
+  document.body.classList.toggle('lens-height', which === 'height');
+  if (map.getLayer('buildings'))
+    map.setPaintProperty('buildings', 'fill-extrusion-color', buildingColorExpr(which));
+  document.querySelectorAll('#lens-seg button').forEach(b =>
+    b.classList.toggle('active', b.dataset.lens === which));
+  document.getElementById('legend-title').textContent =
+    which === 'height' ? 'Výška zástavby' : 'Index dostupnosti';
+  document.getElementById('legend-unit').textContent =
+    which === 'height' ? 'metre' : '0 = slabá · 100 = špička';
+  const st = document.getElementById('story-title');
+  const tx = document.getElementById('story-text');
+  if (which === 'height') {
+    st.textContent = 'Vertikálny profil mesta';
+    tx.innerHTML = 'Každá budova je vytlačená do výšky z reálnych dát OSM. Nízke historické jadro, '
+      + 'panelová Petržalka a nové veže — tri éry mesta naraz.';
+  } else {
+    st.textContent = '15-minútové mesto';
+    tx.innerHTML = 'Koľko zo 7 denných potrieb máš pešo do 15 minút? Mesto je zafarbené podľa '
+      + 'dostupnosti. <b>Klikni kamkoľvek</b> a zisti, čo máš v dosahu.';
+  }
+  renderLegend();
+}
+
+function renderLegend() {
+  const el = document.getElementById('legend');
+  if (lens === 'height') {
+    const ticks = [0, 15, 30, 60, 90, 130];
+    el.innerHTML = `<div class="legend-bar legend-bar-h"></div>`
+      + `<div class="legend-ticks">${ticks.map(t => `<span>${t}</span>`).join('')}</div>`;
+  } else {
+    el.innerHTML = `<div class="legend-bar legend-bar-a"></div>`
+      + `<div class="legend-ticks"><span>slabá</span><span>dobrá</span><span>špička</span></div>`
+      + `<div class="legend-cats">${CAT_ORDER.map(c => {
+          const m = CAT_META[c];
+          return `<span class="lc"><i style="background:${m.color}"></i>${m.emoji} ${m.label}</span>`;
+        }).join('')}</div>`;
+  }
+}
+
+/* ---------- 15-min klik analýza ---------- */
+function haversineM(a, b) {
+  const R = 6371000, toR = Math.PI / 180;
+  const dLat = (b[1] - a[1]) * toR, dLon = (b[0] - a[0]) * toR;
+  const la1 = a[1] * toR, la2 = b[1] * toR;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function nearestM(lngLat, cat) {
+  let best = Infinity;
+  for (const p of (amByCat[cat] || [])) {
+    const d = haversineM(lngLat, p);
+    if (d < best) best = d;
+  }
+  return best;
+}
+function showSpotAt(lngLat, bldg) {
+  const ll = [lngLat.lng, lngLat.lat];
+  let score = 0;
+  const rows = CAT_ORDER.map(c => {
+    const m = CAT_META[c];
+    const d = nearestM(ll, c);
+    const min = Math.max(1, Math.round(d / 80));   // 80 m/min ≈ 4,8 km/h
+    const ok = d <= m.rad;
+    if (ok) score++;
+    return `<div class="spot-row ${ok ? 'ok' : 'no'}">
+        <span class="sr-ic" style="--c:${m.color}">${m.emoji}</span>
+        <span class="sr-l">${m.label}</span>
+        <span class="sr-m">${min} min</span>
+        <span class="sr-x">${ok ? '✓' : '✗'}</span></div>`;
+  }).join('');
+
+  document.getElementById('spot-score').textContent = score;
+  document.getElementById('spot-score').parentElement.dataset.s = score;
+  document.getElementById('spot-sub').textContent =
+    score >= 6 ? 'kompletné 15-min miesto' : score >= 4 ? 'slušná dostupnosť' : 'slabšie obslúžené';
+  document.getElementById('spot-rows').innerHTML = rows;
+
+  const bEl = document.getElementById('spot-bldg');
+  if (bldg && bldg.h) {
+    const h = Math.round(bldg.h);
+    bEl.hidden = false;
+    bEl.innerHTML = `<span>🏢 ${bldg.name && bldg.name.length ? bldg.name : 'Budova'}</span>`
+      + `<b>${h} m · ≈ ${Math.max(1, Math.round(h / 3.2))} podl.</b>`;
+  } else {
+    bEl.hidden = true;
+  }
+  document.getElementById('spot').hidden = false;
 }
 
 /* ---------- orientačné body (HTML markery) ---------- */
@@ -285,11 +421,11 @@ function stopTour() {
 
 /* ---------- UI wiring ---------- */
 function wireUI() {
-  // legend
-  const ticks = [0, 15, 30, 60, 90, 130];
-  document.getElementById('legend').innerHTML =
-    `<div class="legend-bar"></div><div class="legend-ticks">${
-      ticks.map(t => `<span>${t}</span>`).join('')}</div>`;
+  renderLegend();
+
+  // šošovka
+  document.querySelectorAll('#lens-seg button').forEach(b =>
+    b.addEventListener('click', () => setLens(b.dataset.lens)));
 
   // layer toggles
   const toggle = (id, ...layers) => {
@@ -299,6 +435,7 @@ function wireUI() {
     });
   };
   toggle('t-buildings', 'buildings', 'buildings-hi');
+  toggle('t-amenities', 'amenities');
   toggle('t-green', 'green', 'green-edge');
   toggle('t-water', 'water', 'water-edge');
   toggle('t-roads', 'roads');
@@ -306,6 +443,14 @@ function wireUI() {
 
   // landmarks are DOM markers, not map layers
   document.getElementById('t-landmarks').addEventListener('change', (e) => showLandmarks(e.target.checked));
+  showLandmarks(false);   // default vyp — vybavenosť je dôležitejšia
+
+  // slabé miesta — zvýrazni budovy ≤5/7
+  document.getElementById('t-weak').addEventListener('change', (e) => {
+    weakOn = e.target.checked;
+    map.setLayoutProperty('buildings-weak', 'visibility', weakOn ? 'visible' : 'none');
+    map.setPaintProperty('buildings', 'fill-extrusion-opacity', weakOn ? 0.14 : 0.92);
+  });
 
   // height filter
   const hf = document.getElementById('height-filter');
@@ -330,9 +475,9 @@ function wireUI() {
   document.getElementById('tour-next').addEventListener('click', () => { stopTour(); gotoStop(tourIdx + 1); });
   document.getElementById('tour-prev').addEventListener('click', () => { stopTour(); gotoStop(tourIdx - 1); });
 
-  // inspector close
-  document.getElementById('insp-close').addEventListener('click', () =>
-    document.getElementById('inspector').hidden = true);
+  // spot close
+  document.getElementById('spot-close').addEventListener('click', () =>
+    document.getElementById('spot').hidden = true);
 
   // panel collapse
   const panel = document.getElementById('panel');
