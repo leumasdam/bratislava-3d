@@ -209,7 +209,8 @@ function buildLandmarks() {
       el.className = 'lm lm-pin';
       el.innerHTML = `<span class="lm-dot">${lm.icon}</span><span class="lm-label">${lm.name}</span>`;
     }
-    const m = new maplibregl.Marker({ element: el, anchor: lm.t === 'area' ? 'center' : 'bottom' })
+    const m = new maplibregl.Marker({ element: el, anchor: lm.t === 'area' ? 'center' : 'bottom',
+        offset: lm.t === 'area' ? [0, 0] : [0, 14] })   // pin nižšie, nech sa nekryje s názvami
       .setLngLat(lm.at).addTo(map);
     m._kind = lm.t;
     lmMarkers.push(m);
@@ -247,7 +248,7 @@ function setFocus(stop) {
   el.className = 'lm-focus';
   el.innerHTML = `<span class="lm-focus-ring"></span><span class="lm-focus-pin">${stop.icon}</span>`
     + `<span class="lm-focus-label">${stop.title}</span>`;
-  focusMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+  focusMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, 20] })
     .setLngLat(stop.focus).addTo(map);
 }
 
