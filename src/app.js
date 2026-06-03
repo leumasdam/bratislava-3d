@@ -9,11 +9,16 @@ const HEIGHT_RAMP = [
   0, '#21303a', 8, '#27606b', 15, '#2f8f8a', 25, '#46e0d0',
   40, '#bfe27a', 60, '#ffc24b', 90, '#ff7a45', 130, '#ff4d4d',
 ];
-/* ---- 15-min index → color ramp (0–100, červená = slabá, zelená = špička) ---- */
+/* ---- kvalita 0–100 → moderná percepčne čistá sekvenčná škála ----
+   Tmavá indigo (slabá) → fialová → korálová → jantár → limetka → akvamarín (špička).
+   Inšpirované magma/viridis: žiadne blatisté stredné tóny, každý stupeň jasne odlíšiteľný,
+   a poradie funguje aj pri čiastočnej farbosleposti (svetlosť rastie monotónne so skóre). */
 const ACCESS_RAMP = [
-  45, '#c0392b', 56, '#e0603b', 66, '#e6a13c', 75, '#d8c84a',
-  83, '#8ec85a', 92, '#34c47a',
+  22, '#3a1d52', 32, '#7a2a6e', 42, '#b83a63', 50, '#e35a54',
+  58, '#f57c3d', 66, '#f7a83b', 74, '#d7df58', 84, '#37e0b0',
 ];
+/* zoradené stopy (pre legendu / CSS gradient) */
+const ACCESS_STOPS = ['#3a1d52','#7a2a6e','#b83a63','#e35a54','#f57c3d','#f7a83b','#d7df58','#37e0b0'];
 /* ---- kategórie dennej vybavenosti (poradie = riadky v karte) ---- */
 const CAT_META = {
   obchod:  { emoji:'🛒', label:'Obchod',   color:'#5dade2', rad:700  },
@@ -97,7 +102,7 @@ const map = new maplibregl.Map({
     { id: 'bg', type: 'background', paint: { 'background-color': MOODS.day.bg } },
   ], glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf' },
   center: [17.1150, 48.1500],
-  zoom: 11.4, pitch: 50, bearing: -16,
+  zoom: 11.4, pitch: 28, bearing: -14,
   maxPitch: 78, antialias: true, attributionControl: false,
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
@@ -219,19 +224,25 @@ map.on('load', async () => {
     paint: { 'line-color': '#46e0d0', 'line-width': 1.4, 'line-opacity': 0.55,
       'line-dasharray': [3, 2] } });
 
-  /* celomestská hex mriežka dostupnosti — 3D prizmy podľa indexu */
-  map.addLayer({ id: 'grid', type: 'fill-extrusion', source: 'grid',
+  /* celomestská hex mriežka kvality — PLOCHÝ 2D choropleth (žiadne prekrývanie prizmov).
+     Čistá farebná plocha + jemný okraj medzi hexmi = každá bunka je zreteľne oddelená.
+     3D detail v jadre zabezpečia budovy, nie hexy. */
+  map.addLayer({ id: 'grid', type: 'fill', source: 'grid',
     paint: {
-      'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'idx'], ...ACCESS_RAMP],
-      // vysoké prizmy z celomestského pohľadu, splošti pri priblížení nech budovy vystúpia
-      'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'],
-        11.5, ['+', 15, ['*', 1.1, ['get', 'idx']]],
-        13.5, 3],
-      'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.82, 14, 0.5],
+      'fill-color': ['interpolate', ['linear'], ['get', 'idx'], ...ACCESS_RAMP],
+      // plné a sýte z celomestského pohľadu; pri priblížení do jadra zľahka ustúpi budovám
+      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.9, 14, 0.7, 15.4, 0.42],
+    } });
+  /* tenký okraj medzi hexmi — odsadenie, aby splývajúce plochy neboli „farba cez farbu" */
+  map.addLayer({ id: 'grid-edge', type: 'line', source: 'grid',
+    paint: {
+      'line-color': 'rgba(8,11,16,.55)',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 13, 1.1, 15, 1.6],
+      'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.8, 15.4, 0.3],
     } });
   // pri silnom priblížení skry hexy úplne, nech vládne 3D detail jadra
-  map.setLayerZoomRange('grid', 0, 15.5);
+  map.setLayerZoomRange('grid', 0, 15.6);
+  map.setLayerZoomRange('grid-edge', 0, 15.6);
 
   /* 3D buildings (farba sa nastaví cez setLens) */
   map.addLayer({ id: 'buildings', type: 'fill-extrusion', source: 'buildings',
@@ -332,19 +343,15 @@ function buildingColorExpr() {
 }
 
 /* ---------- Atlas: výber indikátora ---------- */
-const MIN_RAMP_ATLAS = [0, '#34c47a', 4, '#8ec85a', 7, '#d8c84a', 10, '#e6a13c', 13, '#e0603b', 18, '#c0392b'];
+/* minúty pešo: 0 = výborne (akvamarín) → 18+ = ďaleko (tmavá indigo). Inverz hlavnej škály. */
+const MIN_RAMP_ATLAS = [0, '#37e0b0', 4, '#d7df58', 7, '#f7a83b', 10, '#f57c3d', 13, '#b83a63', 18, '#3a1d52'];
 function gridColorExpr() {
   if (indicator === 'access' && catLens)
     return ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP_ATLAS];
   return ['interpolate', ['linear'], ['coalesce', ['get', META[indicator].key], 50], ...ACCESS_RAMP];
 }
 function applyGridColor() {
-  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-extrusion-color', gridColorExpr());
-  // výška hexa = hodnota zvoleného indikátora (krajina kvality)
-  if (map.getLayer('grid'))
-    map.setPaintProperty('grid', 'fill-extrusion-height', ['interpolate', ['linear'], ['zoom'],
-      11.5, ['+', 15, ['*', 1.1, ['coalesce', ['get', META[indicator].key], 50]]],
-      13.5, 3]);
+  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-color', gridColorExpr());
 }
 
 function buildIndSel() {
@@ -490,8 +497,10 @@ function setCatLens(cat) {
 }
 
 /* ---------- zistenia (atlas: 6 rozmerov + kompozit) ---------- */
-function ACCESS_COLOR(v) {       // farba podľa skóre 0–100
-  return v >= 80 ? '#34c47a' : v >= 65 ? '#8ec85a' : v >= 50 ? '#d8c84a' : v >= 38 ? '#e6a13c' : '#e0603b';
+function ACCESS_COLOR(v) {       // farba podľa skóre 0–100 (harmonizované s mapovou škálou)
+  return v >= 84 ? '#37e0b0' : v >= 74 ? '#d7df58' : v >= 66 ? '#f7a83b'
+       : v >= 58 ? '#f57c3d' : v >= 50 ? '#e35a54' : v >= 42 ? '#b83a63'
+       : v >= 32 ? '#7a2a6e' : '#3a1d52';
 }
 function buildFindings(grid) {
   const cells = (grid && grid.features) || [];
@@ -722,8 +731,15 @@ function buildLandmarks() {
     m._kind = lm.t;
     lmMarkers.push(m);
   }
-  // pri oddialení ukáž len ikonky (názvy by sa prekrývali)
-  const setZoomClass = () => document.body.classList.toggle('zoom-far', map.getZoom() < 14.2);
+  // declutter podľa priblíženia:
+  //  • celomestský pohľad (zoom < 13.2) → skry pin-y úplne, nech vládne čistý choropleth
+  //  • stredné priblíženie → ikonky bez názvov
+  //  • detail (zoom ≥ 14.2) → ikonky aj názvy
+  const setZoomClass = () => {
+    const z = map.getZoom();
+    document.body.classList.toggle('zoom-city', z < 13.2);
+    document.body.classList.toggle('zoom-far', z < 14.2);
+  };
   setZoomClass();
   map.on('zoom', setZoomClass);
 }
@@ -759,8 +775,8 @@ function closeLandmarkCard() { document.getElementById('lmcard').hidden = true; 
 
 /* ---------- guided tour ---------- */
 const TOUR = [
-  { title:'Celá Bratislava', center:[17.1150,48.1500], zoom:11.4, pitch:50, bearing:-16,
-    text:'Hexagóny cez <b>obytné územie celého mesta</b> — výška a farba ukazujú 15-min dostupnosť. Zelené žiariace jadro vs nízke červené okraje: <b>každá piata oblasť je autozávislá.</b>' },
+  { title:'Celá Bratislava', center:[17.1150,48.1500], zoom:11.4, pitch:28, bearing:-14,
+    text:'Mapa kvality života cez <b>obytné územie celého mesta</b>. Každý hexagón je jedna oblasť, farba = skóre. Žiariace akvamarínové jadro vs tmavé okraje: <b>každá piata oblasť je autozávislá.</b>' },
   { title:'Bratislavský hrad', focus:[17.1003,48.1419], icon:'🏰', zoom:15.6, pitch:64, bearing:24,
     text:'Hradný kopec a pod ním <b>nízke historické jadro</b> — Staré Mesto si stáročia drží drobnú mierku.' },
   { title:'Staré Mesto', focus:[17.1135,48.1445], icon:'🏛️', zoom:15.4, pitch:65, bearing:-34,
@@ -831,7 +847,7 @@ function wireUI() {
       layers.forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', v));
     });
   };
-  toggle('t-grid', 'grid');
+  toggle('t-grid', 'grid', 'grid-edge');
   toggle('t-buildings', 'buildings', 'buildings-hi');
   toggle('t-amenities', 'amenities');
   toggle('t-green', 'green', 'green-edge');
