@@ -5,7 +5,7 @@ geodát (OpenStreetMap) a vyrenderovaný priamo v prehliadači. Žiadna podklado
 mapa, žiadny API kľúč — len dáta o meste premenené na „svietiaci architektonický
 model".
 
-**▶ Živá ukážka:** _(doplní sa po nasadení na GitHub Pages)_
+**▶ Živá ukážka: https://leumasdam.github.io/bratislava-3d/**
 
 ![Bratislava 3D](screens/00-cover.png)
 
