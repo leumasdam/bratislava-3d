@@ -47,6 +47,21 @@ A poctivosť: overovatelia našli reálne limity (dvojitá normalizácia, vertex
 pri chodeckosti, žiadne GTFS/satelit) — **nechal som ich napísané v caveats**, lebo
 kompetencia je vedieť, kde je tvoj odhad slabý, nie to skryť.
 
+### ★★ Reálne dáta a benchmark — druhý tím agentov
+
+Proxy je dobrý začiatok, ale silu dáva realita. Druhý tím agentov priniesol:
+**reálnu populáciu** (WorldPop 100 m raster Slovenska, navzorkovaný cez `rasterio`
+na hexy), **reálnu kvalitu MHD** (GTFS feed DPB — 1 348 zastávok, 481 tis. spojov
+za pracovný deň, frekvencia na zastávku), a **porovnanie 5 miest** (každé mesto
+vlastný agent spustil rovnakú 15-min analýzu cez Overpass).
+
+Benchmark dal Bratislave zrkadlo: **56 % obytných oblastí je 15-minútových — 4. z 5**,
+za Viedňou a Prahou (70 %) aj Budapešťou (60 %), no pred Brnom (34 %). To je presne
+ten kontext, ktorý z čísla robí príbeh: *nie sme zlí, ale máme kam rásť.*
+
+Poctivosť aj tu: WorldPop ukázal, že náš hex-grid pokrýva len ~147 tis. obyvateľov
+(nie celé mesto) — **napísal som to ako limit**, nie zametol pod koberec.
+
 ### 0. Z jadra na celé mesto — lebo jadro klamalo
 
 Prvá analýza pokrývala len husté centrum a vyšlo, že **97 % budov je v 15-min

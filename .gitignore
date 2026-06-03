@@ -3,3 +3,6 @@ node_modules/
 *.log
 __pycache__/
 .vscode/
+
+data/svk_pop.tif
+data/gtfs_ba.zip

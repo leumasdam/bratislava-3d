@@ -18,12 +18,26 @@ Každý hexagón obytného územia má skóre 0–100 v šiestich nezávislých 
 | 🕒 **Dostupnosť** | 15-min dostupnosť 7 denných potrieb pešo |
 | 🌳 **Zeleň** | zelená rovnosť — podiel a blízkosť zelene |
 | 🌡️ **Tepl. komfort** | pomer zelene/vody voči betónu (proxy tepelného ostrova) |
-| 🚊 **MHD** | hustota zastávok + blízkosť koľajovej dopravy |
+| 🚊 **MHD** | **reálne frekvencie z GTFS DPB** (1 348 zastávok, 481 tis. spojov/deň) |
 | 🚶 **Chodeckosť** | jemnosť uličnej siete, bariéry diaľnic |
 | 🔇 **Pokoj** | inverz dopravného hluku (vzdialenosť od ciest/tratí) |
 
 Spoja sa do **Indexu kvality miesta** — a **posuvníkmi váh** si zvolíš, čo je
 pre teba dôležité (mesto sa prepočíta naživo). Klik na hex ukáže celý jeho profil.
+
+## Porovnanie miest
+
+Tá istá 15-min metóda spustená pre 5 stredoeurópskych miest (každé vlastný agent):
+
+| Mesto | % oblastí v 15-min meste |
+|---|---|
+| Viedeň | 70 % |
+| Praha | 70 % |
+| Budapešť | 60 % |
+| **Bratislava** | **56 %** |
+| Brno | 34 % |
+
+Bratislava je **4. z 5** — za Viedňou, Prahou aj Budapešťou, no pred Brnom.
 
 ## Plánovacie pieskovisko
 
@@ -32,7 +46,8 @@ a *postavíš* škôlku/lekára/zastávku/park — a nástroj **okamžite prepo�
 v ľuďoch** („novo dostupné pre 3 400 obyvateľov do 15 min"). Tlačidlo
 **„Navrhni najlepšie miesto"** prejde kandidátske lokality a nájde tú, ktorá
 pomôže najväčšiemu počtu obyvateľov — decision-support, nie len mapa. Populácia
-na hex je odhad z obytného územia, kalibrovaný na ~475 000 obyvateľov Bratislavy.
+na hex je **reálna z WorldPop** (100 m raster, navzorkovaný na hexy); analyzovaný
+hex-grid pokrýva ~147 tis. obyvateľov (časť mesta, nie celé).
 
 ---
 

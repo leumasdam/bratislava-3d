@@ -36,12 +36,20 @@ const INDICATORS = [
   { id:'access',  key:'q_access',  emoji:'🕒', label:'Dostupnosť',    desc:'15-min dostupnosť 7 denných potrieb pešo.' },
   { id:'green',   key:'q_green',   emoji:'🌳', label:'Zeleň',         desc:'Zelená rovnosť — podiel a blízkosť zelene v okolí.' },
   { id:'heat',    key:'q_heat',    emoji:'🌡️', label:'Tepl. komfort', desc:'Tepelný komfort — pomer zelene/vody voči betónu (proxy ostrova).' },
-  { id:'transit', key:'q_transit', emoji:'🚊', label:'MHD',           desc:'Kvalita MHD — hustota zastávok a blízkosť koľajovej dopravy.' },
+  { id:'transit', key:'q_transit', emoji:'🚊', label:'MHD',           desc:'Kvalita MHD — reálne frekvencie zastávok z GTFS DPB (481 tis. spojov/deň).' },
   { id:'walk',    key:'q_walk',    emoji:'🚶', label:'Pre chodcov',    desc:'Ako dobre sa tu chodí pešo — hustá a jemná sieť ulíc, málo bariér (diaľnic).' },
   { id:'noise',   key:'q_noise',   emoji:'🔇', label:'Pokoj',         desc:'Pokoj — inverz dopravného hluku (vzdialenosť od ciest/tratí).' },
 ];
 const META = Object.fromEntries(INDICATORS.map(i => [i.id, i]));
 const WEIGHTED = ['access', 'green', 'heat', 'transit', 'walk', 'noise'];
+/* porovnanie miest — rovnaká 15-min metóda, ~10 km okno (z workflow) */
+const CITIES = [
+  { city:'Viedeň',     good:70.4, mean:5.65 },
+  { city:'Praha',      good:69.8, mean:5.73 },
+  { city:'Budapešť',   good:59.9, mean:5.29 },
+  { city:'Bratislava', good:56.1, mean:5.02, me:true },
+  { city:'Brno',       good:33.9, mean:3.66 },
+];
 let indicator = 'index';
 let weights = Object.fromEntries(WEIGHTED.map(k => [k, 1]));
 
@@ -298,6 +306,7 @@ map.on('load', async () => {
   buildPlanner();
   setIndicator('index');
   buildFindings(grid);
+  buildCities();
   wireUI();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
   showIntro(grid);
@@ -585,6 +594,20 @@ function showSpotAt(lngLat, bldg, hex) {
   bEl.hidden = !html;
   bEl.innerHTML = html;
   document.getElementById('spot').hidden = false;
+}
+
+/* ---------- porovnanie miest ---------- */
+function buildCities() {
+  const el = document.getElementById('cities');
+  if (!el) return;
+  const max = Math.max(...CITIES.map(c => c.good));
+  el.innerHTML = CITIES.map(c => {
+    const w = Math.round(100 * c.good / max);
+    return `<div class="crow${c.me ? ' me' : ''}">`
+      + `<span class="cc-l">${c.city}</span>`
+      + `<span class="cc-track"><i style="width:${w}%"></i></span>`
+      + `<span class="cc-v">${c.good.toFixed(0)} %</span></div>`;
+  }).join('');
 }
 
 /* ---------- Atlas runtime + plánovacie pieskovisko ---------- */

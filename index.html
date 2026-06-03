@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas4" rel="stylesheet" />
+<link href="src/style.css?v=atlas5" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -93,6 +93,12 @@
       <section class="block" id="block-findings">
         <div class="block-head"><h2>Zistenia</h2></div>
         <div class="findings" id="findings"></div>
+      </section>
+
+      <section class="block" id="block-cities">
+        <div class="block-head"><h2>Porovnanie miest</h2><span class="hint">% v 15-min meste</span></div>
+        <div class="cities" id="cities"></div>
+        <p class="micro">Podiel obytných oblastí s 6+/7 potrebami do 15 min pešo (rovnaká metóda, ~10 km okolo centra). <b>Bratislava je 4. z 5</b> — za Viedňou, Prahou aj Budapešťou, no pred Brnom.</p>
       </section>
 
       <section class="block">
@@ -206,6 +212,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas4"></script>
+  <script src="src/app.js?v=atlas5"></script>
 </body>
 </html>
