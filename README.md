@@ -62,12 +62,14 @@ python -m http.server 8000
 ## Štruktúra
 
 ```
-fetch_all.py        dátová pipeline (Overpass → GeoJSON)
+fetch_all.py        dátová pipeline (Overpass → GeoJSON, failover + dlaždice)
+fill_gaps.py        doplnenie dlaždíc, ktoré pod záťažou zlyhali
 index.html          kostra UI
 src/app.js          MapLibre scéna, interakcie, sprievodca
 src/style.css       dizajn (dark „model" štýl)
-data/*.geojson      stiahnuté geodáta
-shoot.js            headless capture hero záberov (puppeteer)
+data/*.geojson      stiahnuté geodáta (10 046 budov, ulice, zeleň, voda, hranice)
+shoot.cjs           headless capture hero záberov (puppeteer)
+screens/            vyrenderované náhľady
 ```
 
 ## Dáta a licencia
