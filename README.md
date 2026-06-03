@@ -49,8 +49,11 @@ ale aj v ňom sú rozdiely a pukliny — a tie nástroj odhalí.
 ```bash
 python fetch_all.py          # budovy, zeleň, voda, ulice, hranice → data/*.geojson
 python fill_gaps.py          # doplní dlaždice, ktoré pod záťažou zlyhali
+python fetch_water_rivers.py # Dunaj + jazerá (plochy) a rieky/kanály (línie)
+python make_danube.py        # os Dunaja → reálna šírka (~300 m) bufferom (shapely)
 python fetch_amenities.py    # 7 kategórií vybavenosti → amenities.geojson
 python compute_access.py     # 15-min skóre (sc 0–7, idx 0–100) do buildings.geojson
+python fetch_wiki.py         # fotka + popis pamiatok zo sk.wikipedia
 ```
 
 Verejné Overpass mirrory pod záťažou vracajú 504, preto sťahovanie:
