@@ -53,6 +53,11 @@ const CITIES = [
 let indicator = 'index';
 let weights = Object.fromEntries(WEIGHTED.map(k => [k, 1]));
 
+const CITY_LIST = [
+  { slug:'bratislava', name:'Bratislava' }, { slug:'vieden', name:'Viedeň' },
+  { slug:'praha', name:'Praha' }, { slug:'brno', name:'Brno' }, { slug:'budapest', name:'Budapešť' },
+];
+let currentCity = 'bratislava', baGrid = null, cityMode = false;
 let catLens = '';           // '' = celkovo, inak kľúč kategórie (pri indikátore 'access')
 let gridData = null;
 let amByCat = {};           // cat -> [[lon,lat],...] pre klik-výpočet
@@ -296,6 +301,7 @@ map.on('load', async () => {
     } });
 
   gridData = grid;
+  baGrid = grid;
   initAtlasRuntime();
   applyLight('day');
   computeStats(buildings, grid);
@@ -307,6 +313,7 @@ map.on('load', async () => {
   setIndicator('index');
   buildFindings(grid);
   buildCities();
+  buildCitySeg();
   wireUI();
   wireAsk();
   setTimeout(() => document.getElementById('loader').classList.add('hide'), 350);
@@ -337,8 +344,9 @@ map.on('load', async () => {
   /* klik kdekoľvek → 15-min analýza + rozbor hexa (atlas), alebo postav (plánovač) */
   map.on('click', (e) => {
     if (plannerOn) { addFacility(placeType, [e.lngLat.lng, e.lngLat.lat]); return; }
-    const b = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
     const g = map.queryRenderedFeatures(e.point, { layers: ['grid'] });
+    if (cityMode) { if (g.length) showCityHex(g[0].properties); return; }
+    const b = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
     showSpotAt(e.lngLat, b.length ? b[0].properties : null, g.length ? g[0].properties : null);
   });
 });
@@ -554,6 +562,8 @@ function nearestM(lngLat, cat) {
   return best;
 }
 function showSpotAt(lngLat, bldg, hex) {
+  document.querySelector('.spot-title').textContent = 'do 15 minút pešo';
+  document.querySelector('.spot-score span').textContent = '/7';
   const ll = [lngLat.lng, lngLat.lat];
   let score = 0;
   const rows = CAT_ORDER.map(c => {
@@ -594,6 +604,65 @@ function showSpotAt(lngLat, bldg, hex) {
   }
   bEl.hidden = !html;
   bEl.innerHTML = html;
+  document.getElementById('spot').hidden = false;
+}
+
+/* ---------- prepínač miest (platforma) ---------- */
+function buildCitySeg() {
+  const el = document.getElementById('cityseg');
+  el.innerHTML = CITY_LIST.map(c => `<button data-slug="${c.slug}"${c.slug === 'bratislava' ? ' class="active"' : ''}>${c.name}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => switchCity(b.dataset.slug)));
+  document.getElementById('city-mode-hint').textContent = 'plný režim';
+}
+async function switchCity(slug) {
+  if (slug === currentCity) return;
+  document.querySelectorAll('#cityseg button').forEach(b => { b.classList.toggle('active', b.dataset.slug === slug); });
+  const hint = document.getElementById('city-mode-hint');
+  if (slug === 'bratislava') {
+    cityMode = false; document.body.classList.remove('city-mode');
+    gridData = baGrid; hexCentroids = baGrid.features.map(hexCentroid);
+    map.getSource('grid').setData(baGrid);
+    map.flyTo({ center: [17.115, 48.15], zoom: 11.4, pitch: 28, bearing: -14, duration: 1500, essential: true });
+    hint.textContent = 'plný režim';
+  } else {
+    hint.textContent = 'načítavam…';
+    const fc = await loadJSON('cities/' + slug + '.json');
+    if (!fc.features || !fc.features.length) { hint.textContent = 'dáta chýbajú'; return; }
+    cityMode = true; document.body.classList.add('city-mode');
+    if (plannerOn) { const t = document.getElementById('t-planner'); t.checked = false; t.dispatchEvent(new Event('change')); }
+    ['air', 'air-glow'].forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', 'none'));
+    document.getElementById('t-air').checked = false;
+    showLandmarks(false);
+    gridData = fc; hexCentroids = fc.features.map(hexCentroid);
+    map.getSource('grid').setData(fc);
+    const c = (fc.meta && fc.meta.center) || [17.11, 48.15];
+    map.flyTo({ center: c, zoom: 11.1, pitch: 28, bearing: -14, duration: 1500, essential: true });
+    hint.textContent = 'atlas (zjednodušený)';
+  }
+  currentCity = slug;
+  weakOn = false; document.getElementById('t-weak').checked = false;
+  if (catLens) catLens = '';
+  setIndicator('index');
+  computeStats(gridData, gridData);
+  buildFindings(gridData);
+  document.getElementById('spot').hidden = true;
+  // titulok až po setIndicator (ten ho prepisuje)
+  document.getElementById('story-title').textContent =
+    slug === 'bratislava' ? 'Atlas kvality života' : 'Atlas: ' + ((gridData.meta && gridData.meta.name) || slug);
+}
+function showCityHex(p) {
+  document.querySelector('.spot-title').textContent = 'Kvalita tu';
+  document.querySelector('.spot-score span').textContent = '/100';
+  const sc = document.getElementById('spot-score');
+  sc.textContent = Math.round(p.q_index); sc.parentElement.dataset.s = '';
+  document.getElementById('spot-sub').textContent = 'index kvality miesta';
+  document.getElementById('spot-rows').innerHTML = '';
+  const bEl = document.getElementById('spot-bldg'); bEl.hidden = false;
+  bEl.innerHTML = '<div class="spot-atlas">' + WEIGHTED.map(id => {
+    const v = Math.round(p[META[id].key] || 0);
+    return `<div class="sa-row"><span>${META[id].emoji} ${META[id].label}</span>`
+      + `<span class="sa-track"><i style="width:${v}%;background:${ACCESS_COLOR(v)}"></i></span><span class="sa-v">${v}</span></div>`;
+  }).join('') + '</div>';
   document.getElementById('spot').hidden = false;
 }
 
@@ -817,6 +886,67 @@ function refreshAskFoot() {
   const has = !!localStorage.getItem('anthropic_key');
   const foot = document.getElementById('ask-foot');
   if (foot) foot.innerHTML = has ? '🟢 Pripojené na Claude — pýtaj sa voľne.' : 'Demo režim — pre voľné otázky pridaj svoj Claude API kľúč 🔑';
+}
+
+/* ========== živá IoT vrstva: kvalita ovzdušia (Sensor.Community) ========== */
+let airLoaded = false;
+function pmColor() {
+  return ['interpolate', ['linear'], ['get', 'pm25'],
+    0, '#2ecc71', 10, '#a3d977', 20, '#f4d03f', 25, '#e67e22', 50, '#e74c3c', 90, '#9b2d6f'];
+}
+async function loadAir(refresh) {
+  const note = document.getElementById('air-note');
+  try {
+    note.hidden = false; note.textContent = 'Načítavam živé senzory…';
+    const r = await fetch('https://data.sensor.community/airrohr/v1/filter/area=48.15,17.11,18');
+    const data = await r.json();
+    const sensors = {};
+    for (const rec of data) {
+      const loc = rec.location || {}, id = rec.sensor && rec.sensor.id;
+      const lat = +loc.latitude, lon = +loc.longitude;
+      if (!id || !lat || !lon) continue;
+      let pm25 = null, pm10 = null;
+      for (const v of rec.sensordatavalues || []) {
+        if (v.value_type === 'P2') pm25 = +v.value;
+        if (v.value_type === 'P1') pm10 = +v.value;
+      }
+      if (pm25 == null || pm25 > 999) continue;
+      sensors[id] = { lon, lat, pm25: Math.round(pm25 * 10) / 10, pm10: pm10 == null ? null : Math.round(pm10) };
+    }
+    const feats = Object.values(sensors).map(s => ({ type: 'Feature',
+      geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+      properties: { pm25: s.pm25, pm10: s.pm10 } }));
+    const fc = { type: 'FeatureCollection', features: feats };
+    if (map.getSource('air')) map.getSource('air').setData(fc);
+    else {
+      map.addSource('air', { type: 'geojson', data: fc });
+      map.addLayer({ id: 'air-glow', type: 'circle', source: 'air', paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 14, 15, 34],
+        'circle-color': pmColor(), 'circle-opacity': 0.18, 'circle-blur': 1 } });
+      map.addLayer({ id: 'air', type: 'circle', source: 'air', paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 11],
+        'circle-color': pmColor(), 'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-opacity': 0.95 } });
+      map.on('click', 'air', (e) => {
+        const p = e.features[0].properties;
+        new maplibregl.Popup({ closeButton: false, className: 'air-pop' })
+          .setLngLat(e.lngLat)
+          .setHTML(`<b>PM2.5: ${p.pm25} µg/m³</b><br>${airLabel(p.pm25)}${p.pm10 != null ? `<br>PM10: ${p.pm10}` : ''}`)
+          .addTo(map);
+      });
+      map.on('mouseenter', 'air', () => map.getCanvas().style.cursor = 'pointer');
+      map.on('mouseleave', 'air', () => map.getCanvas().style.cursor = '');
+    }
+    airLoaded = true;
+    const now = new Date();
+    note.innerHTML = `🟢 ${feats.length} senzorov naživo · PM2.5 µg/m³ · Sensor.Community`;
+    return feats.length;
+  } catch (e) {
+    note.hidden = false; note.textContent = '⚠️ Živé dáta ovzdušia sa nepodarilo načítať.';
+    return 0;
+  }
+}
+function airLabel(v) {
+  return v < 10 ? 'výborné ovzdušie' : v < 20 ? 'dobré' : v < 25 ? 'prijateľné' : v < 50 ? 'zhoršené' : 'zlé ovzdušie';
 }
 
 /* ---------- Atlas runtime + plánovacie pieskovisko ---------- */
@@ -1089,6 +1219,17 @@ function wireUI() {
 
   // landmarks are DOM markers, not map layers
   document.getElementById('t-landmarks').addEventListener('change', (e) => showLandmarks(e.target.checked));
+
+  // živé ovzdušie (IoT) — lazy load + toggle
+  document.getElementById('t-air').addEventListener('change', async (e) => {
+    if (e.target.checked) {
+      if (!airLoaded) { e.target.disabled = true; await loadAir(); e.target.disabled = false; }
+      ['air-glow', 'air'].forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', 'visible'));
+    } else {
+      ['air-glow', 'air'].forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', 'none'));
+      document.getElementById('air-note').hidden = true;
+    }
+  });
 
   // onboarding
   const intro = document.getElementById('intro');

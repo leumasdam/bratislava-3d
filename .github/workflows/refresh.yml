@@ -1,0 +1,43 @@
+name: Refresh city data
+
+# Živý atlas: raz týždenne (a manuálne) preegeneruje porovnávacie mestá z aktuálnych
+# OSM dát cez engine build_city.py a commitne zmeny. build_city má failover na Overpass,
+# takže výpadok jedného mirroru beh nezhodí (continue-on-error).
+on:
+  schedule:
+    - cron: '17 4 * * 1'   # každý pondelok 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install shapely
+      - name: Rebuild city atlases
+        continue-on-error: true
+        run: |
+          for c in vieden praha brno budapest; do
+            echo "== $c =="
+            python build_city.py "$c" || echo "preskočené: $c"
+          done
+      - name: Validate
+        run: python validate_data.py
+      - name: Commit if changed
+        run: |
+          git config user.name "atlas-bot"
+          git config user.email "actions@github.com"
+          git add data/cities/*.json
+          if git diff --cached --quiet; then
+            echo "Žiadne zmeny."
+          else
+            git commit -m "chore(data): týždenný refresh atlasov miest [skip ci]"
+            git push
+          fi

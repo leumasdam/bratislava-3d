@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas6" rel="stylesheet" />
+<link href="src/style.css?v=atlas7" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -42,6 +42,11 @@
           máš pešo do 15 minút? Mesto je zafarbené podľa dostupnosti.
           <b>Klikni kamkoľvek</b> a zisti, čo máš v dosahu.
         </p>
+      </section>
+
+      <section class="block" id="block-city" style="margin-top:0;padding-top:0;border-top:0">
+        <div class="block-head"><h2>Mesto</h2><span class="hint" id="city-mode-hint"></span></div>
+        <div class="cityseg" id="cityseg"></div>
       </section>
 
       <section class="block">
@@ -112,7 +117,9 @@
           <label class="tg"><input type="checkbox" id="t-water" checked><span>Voda (Dunaj)</span></label>
           <label class="tg"><input type="checkbox" id="t-roads" checked><span>Ulice a železnica</span></label>
           <label class="tg"><input type="checkbox" id="t-districts"><span>Hranice mestských častí</span></label>
+          <label class="tg"><input type="checkbox" id="t-air"><span>🟢 Ovzdušie naživo (IoT)</span></label>
         </div>
+        <p class="micro" id="air-note" hidden></p>
       </section>
 
       <section class="block">
@@ -252,6 +259,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas6"></script>
+  <script src="src/app.js?v=atlas7"></script>
 </body>
 </html>

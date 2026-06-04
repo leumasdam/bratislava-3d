@@ -25,6 +25,25 @@ Každý hexagón obytného územia má skóre 0–100 v šiestich nezávislých 
 Spoja sa do **Indexu kvality miesta** — a **posuvníkmi váh** si zvolíš, čo je
 pre teba dôležité (mesto sa prepočíta naživo). Klik na hex ukáže celý jeho profil.
 
+## Platforma — atlas pre ľubovoľné mesto
+
+Z bespoke appky **engine**: `build_city.py <mesto>` vezme stred mesta a vyrobí
+kompletný atlas (hex mriežka + 6 rozmerov). Predgenerované sú Viedeň, Praha, Brno,
+Budapešť — v appke **prepínač miest** prepne celý atlas. Jeden parametrizovaný
+pipeline, nie kópia skriptov pre každé mesto.
+
+## Živá vrstva ovzdušia (IoT)
+
+Toggle „🟢 Ovzdušie naživo" načíta **reálne PM2.5 zo senzorovej siete
+Sensor.Community** (občianske IoT senzory, bez API kľúča) a vykreslí ich farebne
+podľa kvality ovzdušia — most medzi IoT dátami a mestským modelom.
+
+## CI/CD
+
+- `.github/workflows/ci.yml` — pri každom push validuje `app.js` + integritu dát.
+- `.github/workflows/refresh.yml` — týždenne preegeneruje atlasy miest z aktuálnych
+  OSM dát (živý atlas), commitne zmeny.
+
 ## AI asistent „Spýtaj sa mesta"
 
 Prirodzeným jazykom sa spýtaš a dáta odpovedia + **zvýraznia mapu**: *„kde chýba
