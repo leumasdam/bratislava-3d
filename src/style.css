@@ -421,6 +421,8 @@ body.city-mode #block-planner,body.city-mode .ask-fab,body.city-mode #block-catl
 .cover-stats .cs span{display:block;margin-top:8px;font-size:12px;line-height:1.4;color:var(--ink-dim)}
 .cover-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
 .cover-actions .btn{padding:13px 22px;font-size:14px}
+/* intro „Spustiť prehliadku" je textový ghost button — zruš fixnú 44px šírku (tá je pre ikonové ‹ › tlačidlá) */
+.cover-actions .btn-ghost{width:auto;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .cover-src{font-size:11px;color:var(--ink-faint);letter-spacing:.2px}
 .btn.wide{flex:1;white-space:nowrap}
 .intro-src{font-size:10.5px;color:var(--ink-faint);text-align:center}
