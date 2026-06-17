@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas7" rel="stylesheet" />
+<link href="src/style.css?v=atlas10" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -92,7 +92,7 @@
 
       <section class="block">
         <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni najhoršie oblasti</span></label>
-        <p class="micro">Nechá len hexy s nízkym skóre v zvolenom rozmere — kde mesto zaostáva.</p>
+        <p class="micro">Nechá len budovy s nízkym skóre v zvolenom rozmere — kde mesto zaostáva.</p>
       </section>
 
       <section class="block" id="block-findings">
@@ -109,7 +109,6 @@
       <section class="block">
         <div class="block-head"><h2>Vrstvy</h2></div>
         <div class="toggles">
-          <label class="tg"><input type="checkbox" id="t-grid" checked><span>Mriežka dostupnosti</span></label>
           <label class="tg"><input type="checkbox" id="t-amenities"><span>Vybavenosť (body)</span></label>
           <label class="tg"><input type="checkbox" id="t-landmarks" checked><span>Body záujmu (klik = detail)</span></label>
           <label class="tg"><input type="checkbox" id="t-buildings" checked><span>3D budovy</span></label>
@@ -227,27 +226,23 @@
 
   <!-- uvítací úvod / onboarding -->
   <div class="intro" id="intro" hidden>
-    <div class="intro-card">
-      <div class="intro-kicker">Dátová vizualizácia · otvorené dáta</div>
-      <h2 class="intro-title">Je Bratislava 15-minútové mesto?</h2>
-      <p class="intro-lead">
-        Dobré miesto na život má <b>školu, škôlku, lekára, lekáreň, obchod, zastávku a park</b>
-        pešo do 15 minút. Táto mapa to počíta pre obytné územie celého mesta z otvorených dát.
+    <div class="cover-inner">
+      <div class="cover-kicker"><span class="cover-dot"></span> Dátový atlas mesta · otvorené dáta</div>
+      <h1 class="cover-title">Je Bratislava<br><em>15-minútové</em> mesto?</h1>
+      <p class="cover-lead">
+        Dobré miesto na život má školu, škôlku, lekára, lekáreň, obchod, zastávku a park
+        pešo do 15 minút. Tento atlas to spočíta pre celé mesto z otvorených dát — a zafarbí ním každú budovu.
       </p>
-      <div class="intro-stats">
-        <div class="is"><b id="intro-good">58 %</b><span>obytných oblastí má všetko do 15 min pešo</span></div>
-        <div class="is"><b id="intro-poor">24 %</b><span>je odkázaných na auto</span></div>
+      <div class="cover-stats">
+        <div class="cs"><b id="intro-good">58 %</b><span>obytných oblastí má všetko do 15 min pešo</span></div>
+        <div class="cs"><b>4. z 5</b><span>miest v strednej Európe — za Viedňou, Prahou, Budapešťou</span></div>
+        <div class="cs alt"><b id="intro-poor">24 %</b><span>je odkázaných na auto</span></div>
       </div>
-      <div class="intro-how">
-        <div class="ih"><span>⬢</span> Každý <b>hexagón</b> je jedna obytná oblasť. Čím vyšší a zelenší, tým lepšia dostupnosť.</div>
-        <div class="ih"><span>👆</span> <b>Klikni kamkoľvek</b> a zistíš, čo tam máš pešo do 15 minút.</div>
-        <div class="ih"><span>🎬</span> Alebo sa <b>nechaj previezť mestom</b> — sprievodca ťa prevedie kľúčovými bodmi.</div>
+      <div class="cover-actions">
+        <button class="btn btn-primary" id="intro-explore">Preskúmaj mapu ↓</button>
+        <button class="btn btn-ghost" id="intro-tour">▶ Spustiť prehliadku</button>
       </div>
-      <div class="intro-actions">
-        <button class="btn btn-primary" id="intro-explore">Preskúmať mesto</button>
-        <button class="btn btn-ghost wide" id="intro-tour">▶ Spustiť prehliadku</button>
-      </div>
-      <div class="intro-src">Dáta © OpenStreetMap (ODbL) · MapLibre · bez API kľúča</div>
+      <div class="cover-src">Dáta © OpenStreetMap (ODbL) · MapLibre · render v prehliadači, bez API kľúča</div>
     </div>
   </div>
 
@@ -259,6 +254,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas7"></script>
+  <script src="src/app.js?v=atlas11"></script>
 </body>
 </html>

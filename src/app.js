@@ -78,7 +78,7 @@ const LANDMARKS = [
   { t:'pin', icon:'⛪', name:'Modrý kostolík', at:[17.1170,48.1437], year:'1913', fact:'Secesný skvost architekta Ödöna Lechnera.' },
   { t:'pin', icon:'🏛️', name:'Prezidentský palác', at:[17.1106,48.1486], year:'1760', fact:'Grasalkovičov palác — sídlo prezidenta SR, za ním Francúzska záhrada.' },
   { t:'pin', icon:'🏛️', name:'Úrad vlády SR', at:[17.1056,48.1487], year:'1761', fact:'Letný arcibiskupský palác na Námestí slobody.' },
-  { t:'pin', icon:'⚖️', name:'Národná rada SR', at:[17.0985,48.1394], year:'1994', fact:'Parlament na hradnom kopci.' },
+  { t:'pin', icon:'⚖️', name:'Národná rada SR', at:[17.0992,48.1411], year:'1994', fact:'Parlament na hradnom kopci, hneď vedľa Bratislavského hradu.' },
   { t:'pin', icon:'🏛️', name:'Stará radnica', at:[17.1085,48.1432], year:'14. stor.', fact:'Najstaršia radnica na Slovensku, dnes mestské múzeum.' },
   { t:'pin', icon:'🎭', name:'SND', at:[17.1238,48.1404], year:'2007', fact:'Nová budova Slovenského národného divadla na nábreží.' },
   { t:'pin', icon:'🏢', name:'Eurovea Tower', at:[17.1271,48.1398], year:'2023', fact:'Najvyššia budova Slovenska — 168 m.' },
@@ -104,7 +104,7 @@ let focusMarker = null;
 
 /* ---- atmosphere presets ---- */
 const MOODS = {
-  day:   { bg:'#0b1018', light:[1.1,0.55,0.4], lightPos:[1.3,120,40], boost:1.0,  fog:'rgba(120,150,170,.0)' },
+  day:   { bg:'#e9e8e2', light:[1.5,0.7,0.35], lightPos:[1.3,120,38], boost:1.0,  fog:'rgba(180,190,200,.0)' },
   dusk:  { bg:'#0a0c14', light:[1.0,0.45,0.55],lightPos:[1.4,250,28], boost:1.06, fog:'rgba(255,120,70,.08)' },
   night: { bg:'#05070c', light:[0.7,0.35,0.7], lightPos:[1.5,300,70], boost:1.18, fog:'rgba(40,70,120,.12)' },
 };
@@ -115,7 +115,7 @@ const map = new maplibregl.Map({
     { id: 'bg', type: 'background', paint: { 'background-color': MOODS.day.bg } },
   ], glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf' },
   center: [17.1150, 48.1500],
-  zoom: 11.4, pitch: 28, bearing: -14,
+  zoom: 11.8, pitch: 47, bearing: -14,
   maxPitch: 78, antialias: true, attributionControl: false,
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
@@ -181,81 +181,72 @@ map.on('load', async () => {
   map.addSource('grid', { type: 'geojson', data: grid });
   map.addSource('buildings', { type: 'geojson', data: buildings, generateId: true });
 
-  /* celomestský terén — vyplní 'čierno okolo' (lesy, parky, plochy) */
+  /* SVETLÝ CIVIC ATLAS — mestská štruktúra na papierovom podklade, mapa žiari farbou budov.
+     celomestský terén — jemná urbánna textúra (mierne tmavšia než papier) */
   map.addLayer({ id: 'land-use', type: 'fill', source: 'land-use',
-    paint: { 'fill-color': '#1a212b', 'fill-opacity': 0.8 } });
+    paint: { 'fill-color': '#dddbd2', 'fill-opacity': 0.55 } });
   map.addLayer({ id: 'land-green', type: 'fill', source: 'land-green',
-    paint: { 'fill-color': '#1c4028', 'fill-opacity': 0.95 } });
+    paint: { 'fill-color': '#c2d7ad', 'fill-opacity': 0.85 } });
 
-  /* water — svetlomodrá, nech Dunaj vystúpi */
+  /* water — jemná pastelová modrá, nech Dunaj vystúpi na papieri */
   map.addLayer({ id: 'water', type: 'fill', source: 'water',
-    paint: { 'fill-color': '#2b7fb8', 'fill-opacity': 0.78 } });
+    paint: { 'fill-color': '#a6cfe4', 'fill-opacity': 0.92 } });
   map.addLayer({ id: 'water-edge', type: 'line', source: 'water',
-    paint: { 'line-color': '#7ec8ec', 'line-width': 1.1, 'line-opacity': 0.7 } });
+    paint: { 'line-color': '#7fb7d8', 'line-width': 1.1, 'line-opacity': 0.7 } });
   /* rieky a kanály (Chorvátske rameno…) ako línie */
   map.addLayer({ id: 'rivers', type: 'line', source: 'rivers',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': '#3f9fd0',
+      'line-color': '#8bbcdb',
       'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 16,
         ['match', ['get', 'kind'], 'river', 6, 'canal', 4, 2]],
-      'line-opacity': 0.75,
+      'line-opacity': 0.8,
     } });
 
-  /* celomestský skelet hlavných ciest (pod hexmi) */
+  /* celomestský skelet hlavných ciest — svetlosivé linky */
   map.addLayer({ id: 'city-roads', type: 'line', source: 'city-roads',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': ['match', ['get', 'k'], 'rail', '#3a4655',
-        ['interpolate', ['linear'], ['get', 'r'], 0, '#33424f', 2, '#46596b', 4, '#5c7589']],
+      'line-color': ['match', ['get', 'k'], 'rail', '#b4aea3',
+        ['interpolate', ['linear'], ['get', 'r'], 0, '#cbc6bb', 2, '#bdb7ab', 4, '#aaa498']],
       'line-width': ['interpolate', ['linear'], ['zoom'],
         10, ['+', 0.4, ['*', 0.5, ['get', 'r']]],
         14, ['+', 1, ['*', 1.4, ['get', 'r']]]],
-      'line-opacity': ['interpolate', ['linear'], ['get', 'r'], 0, 0.5, 4, 0.95],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'r'], 0, 0.5, 4, 0.9],
     } });
 
   /* green */
   map.addLayer({ id: 'green', type: 'fill', source: 'green',
-    paint: { 'fill-color': '#16361f', 'fill-opacity': 0.85 } });
+    paint: { 'fill-color': '#bbd3a3', 'fill-opacity': 0.8 } });
   map.addLayer({ id: 'green-edge', type: 'line', source: 'green',
-    paint: { 'line-color': '#2f6b3c', 'line-width': 0.6, 'line-opacity': 0.5 } });
+    paint: { 'line-color': '#9bbf83', 'line-width': 0.6, 'line-opacity': 0.55 } });
 
-  /* roads — width/opacity by rank */
+  /* roads — width/opacity by rank, teplá sivá na papieri */
   map.addLayer({ id: 'roads', type: 'line', source: 'roads',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
-      'line-color': ['match', ['get', 'k'], 'rail', '#3a4150', '#243240'],
+      'line-color': ['match', ['get', 'k'], 'rail', '#aca596', '#c4bfb4'],
       'line-width': ['interpolate', ['linear'], ['zoom'],
         12, ['+', 0.3, ['*', 0.35, ['get', 'r']]],
         16, ['+', 1.2, ['*', 1.4, ['get', 'r']]]],
-      'line-opacity': ['interpolate', ['linear'], ['get', 'r'], 0, 0.35, 4, 0.8],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'r'], 0, 0.4, 4, 0.85],
     } });
 
   /* districts */
   map.addLayer({ id: 'districts', type: 'line', source: 'districts',
     layout: { visibility: 'none' },
-    paint: { 'line-color': '#46e0d0', 'line-width': 1.4, 'line-opacity': 0.55,
+    paint: { 'line-color': '#0e9e84', 'line-width': 1.4, 'line-opacity': 0.6,
       'line-dasharray': [3, 2] } });
 
-  /* celomestská hex mriežka kvality — PLOCHÝ 2D choropleth (žiadne prekrývanie prizmov).
-     Čistá farebná plocha + jemný okraj medzi hexmi = každá bunka je zreteľne oddelená.
-     3D detail v jadre zabezpečia budovy, nie hexy. */
+  /* Hex vrstva — pre Bratislavu SKRYTÁ: kvalitu nesú priamo 3D budovy (farba = skóre).
+     Zapína sa len v režime porovnania miest (Viedeň, Praha…), kde nemáme 3D budovy,
+     len zjednodušený plochý atlas. Plochý choropleth, žiadne prizmy. */
   map.addLayer({ id: 'grid', type: 'fill', source: 'grid',
+    layout: { visibility: 'none' },
     paint: {
-      'fill-color': ['interpolate', ['linear'], ['get', 'idx'], ...ACCESS_RAMP],
-      // plné a sýte z celomestského pohľadu; pri priblížení do jadra zľahka ustúpi budovám
-      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.9, 14, 0.7, 15.4, 0.42],
+      'fill-color': gridColorExpr(),
+      'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.85, 13, 0.74, 15, 0.5],
     } });
-  /* tenký okraj medzi hexmi — odsadenie, aby splývajúce plochy neboli „farba cez farbu" */
-  map.addLayer({ id: 'grid-edge', type: 'line', source: 'grid',
-    paint: {
-      'line-color': 'rgba(8,11,16,.55)',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 13, 1.1, 15, 1.6],
-      'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.8, 15.4, 0.3],
-    } });
-  // pri silnom priblížení skry hexy úplne, nech vládne 3D detail jadra
-  map.setLayerZoomRange('grid', 0, 15.6);
-  map.setLayerZoomRange('grid-edge', 0, 15.6);
 
   /* 3D buildings (farba sa nastaví cez setLens) */
   map.addLayer({ id: 'buildings', type: 'fill-extrusion', source: 'buildings',
@@ -344,10 +335,10 @@ map.on('load', async () => {
   /* klik kdekoľvek → 15-min analýza + rozbor hexa (atlas), alebo postav (plánovač) */
   map.on('click', (e) => {
     if (plannerOn) { addFacility(placeType, [e.lngLat.lng, e.lngLat.lat]); return; }
-    const g = map.queryRenderedFeatures(e.point, { layers: ['grid'] });
-    if (cityMode) { if (g.length) showCityHex(g[0].properties); return; }
+    const gp = hexAt(e.lngLat);   // hex podľa súradnice (nezávislé od viditeľnosti vrstvy)
+    if (cityMode) { if (gp) showCityHex(gp); return; }
     const b = map.queryRenderedFeatures(e.point, { layers: ['buildings'] });
-    showSpotAt(e.lngLat, b.length ? b[0].properties : null, g.length ? g[0].properties : null);
+    showSpotAt(e.lngLat, b.length ? b[0].properties : null, gp);
   });
 });
 
@@ -357,7 +348,10 @@ function applyAmenityFilter() {
   map.setFilter('amenities', ['in', ['get', 'cat'], ['literal', [...activeCats]]]);
 }
 function buildingColorExpr() {
-  return ['interpolate', ['linear'], ['coalesce', ['get', 'idx'], 60], ...ACCESS_RAMP];
+  // budovy nesú q_*/m_* z priestorového joinu na najbližší hex (joinBuildingsToGrid)
+  if (indicator === 'access' && catLens)
+    return ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP_ATLAS];
+  return ['interpolate', ['linear'], ['coalesce', ['get', META[indicator].key], 50], ...ACCESS_RAMP];
 }
 
 /* ---------- Atlas: výber indikátora ---------- */
@@ -368,8 +362,54 @@ function gridColorExpr() {
     return ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP_ATLAS];
   return ['interpolate', ['linear'], ['coalesce', ['get', META[indicator].key], 50], ...ACCESS_RAMP];
 }
+/* ---------- priestorový join: každej budove hodnoty z najbližšieho hexu ----------
+   Budovy z OSM nesú len idx/sc, nie 6 rozmerov kvality. Tie sú na hexoch — tak ich
+   prenesieme na budovu podľa najbližšieho hex-centroidu (regulárny grid → nearest = obsahujúci). */
+const JOIN_KEYS = ['q_index', 'q_access', 'q_green', 'q_heat', 'q_transit', 'q_walk', 'q_noise',
+  ...CAT_ORDER.map(c => 'm_' + c)];
+function buildingCentroid(f) {
+  const g = f.geometry; let r;
+  if (g.type === 'Polygon') r = g.coordinates[0];
+  else if (g.type === 'MultiPolygon') r = g.coordinates[0][0];
+  else return null;
+  const n = r.length - 1; let x = 0, y = 0;
+  for (let i = 0; i < n; i++) { x += r[i][0]; y += r[i][1]; }
+  return [x / n, y / n];
+}
+/* hex pod danou súradnicou (najbližší centroid = obsahujúci hex pri regulárnom gride) */
+function hexAt(lngLat) {
+  if (!gridData || !hexCentroids.length) return null;
+  const cos = Math.cos(48.15 * Math.PI / 180);
+  let bi = -1, bd = Infinity;
+  for (let i = 0; i < hexCentroids.length; i++) {
+    const dx = (hexCentroids[i][0] - lngLat.lng) * cos, dy = hexCentroids[i][1] - lngLat.lat, d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; bi = i; }
+  }
+  return bi >= 0 ? gridData.features[bi].properties : null;
+}
+function joinBuildingsToGrid() {
+  if (!buildingsData || !gridData || !hexCentroids.length) return;
+  const hc = hexCentroids, cos = Math.cos(48.15 * Math.PI / 180);
+  for (const b of buildingsData.features) {
+    const c = buildingCentroid(b); if (!c) continue;
+    let bi = -1, bd = Infinity;
+    for (let i = 0; i < hc.length; i++) {
+      const dx = (hc[i][0] - c[0]) * cos, dy = hc[i][1] - c[1], d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; bi = i; }
+    }
+    if (bi < 0) continue;
+    b.properties._hx = bi;
+    const hp = gridData.features[bi].properties;
+    for (const k of JOIN_KEYS) if (hp[k] != null) b.properties[k] = hp[k];
+  }
+  const bs = map.getSource('buildings'); if (bs) bs.setData(buildingsData);
+}
+/* prefarbí 3D budovy (Bratislava) aj plochý hex grid (porovnanie miest) podľa indikátora —
+   rovnaký výraz funguje pre obe (číta q a m vlastnosti) */
 function applyGridColor() {
-  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-color', gridColorExpr());
+  const expr = buildingColorExpr();
+  if (map.getLayer('buildings')) map.setPaintProperty('buildings', 'fill-extrusion-color', expr);
+  if (map.getLayer('grid')) map.setPaintProperty('grid', 'fill-color', expr);
 }
 
 function buildIndSel() {
@@ -425,6 +465,14 @@ function recomputeIndex() {
   }
   const src = map.getSource('grid');
   if (src) src.setData(gridData);
+  // prenes nový kompozit na budovy (cez uložený _hx) a prekresli
+  if (buildingsData) {
+    for (const b of buildingsData.features) {
+      const hi = b.properties._hx;
+      if (hi != null && gridData.features[hi]) b.properties.q_index = gridData.features[hi].properties.q_index;
+    }
+    const bs = map.getSource('buildings'); if (bs) bs.setData(buildingsData);
+  }
   if (indicator === 'index') { applyGridColor(); buildFindings(gridData); }
 }
 
@@ -446,13 +494,12 @@ function computeStats(fc, grid) {
 
 /* ---------- zvýrazni najhoršie oblasti (filter gridu) ---------- */
 function applyWeak() {
-  if (!map.getLayer('grid')) return;
-  if (weakOn) {
-    const key = indicator === 'access' && catLens ? null : META[indicator].key;
-    map.setFilter('grid', key ? ['<=', ['coalesce', ['get', key], 50], 45] : null);
-  } else {
-    map.setFilter('grid', null);
-  }
+  // „najhoršie oblasti" = ponechaj len prvky so skóre ≤45 v zvolenom rozmere.
+  // Bratislava filtruje 3D budovy, porovnanie miest filtruje plochý grid.
+  const key = (indicator === 'access' && catLens) ? null : META[indicator].key;
+  const filt = (weakOn && key) ? ['<=', ['coalesce', ['get', key], 50], 45] : null;
+  const target = cityMode ? 'grid' : 'buildings';
+  if (map.getLayer(target)) map.setFilter(target, filt);
 }
 
 function renderLegend() {
@@ -622,7 +669,9 @@ async function switchCity(slug) {
     cityMode = false; document.body.classList.remove('city-mode');
     gridData = baGrid; hexCentroids = baGrid.features.map(hexCentroid);
     map.getSource('grid').setData(baGrid);
-    map.flyTo({ center: [17.115, 48.15], zoom: 11.4, pitch: 28, bearing: -14, duration: 1500, essential: true });
+    map.setLayoutProperty('grid', 'visibility', 'none');          // Bratislava: hexy preč, kvalitu nesú budovy
+    if (document.getElementById('t-buildings').checked) map.setLayoutProperty('buildings', 'visibility', 'visible');
+    map.flyTo({ center: [17.115, 48.15], zoom: 11.8, pitch: 47, bearing: -14, duration: 1500, essential: true });
     hint.textContent = 'plný režim';
   } else {
     hint.textContent = 'načítavam…';
@@ -635,6 +684,7 @@ async function switchCity(slug) {
     showLandmarks(false);
     gridData = fc; hexCentroids = fc.features.map(hexCentroid);
     map.getSource('grid').setData(fc);
+    map.setLayoutProperty('grid', 'visibility', 'visible');       // iné mestá: nemajú 3D budovy → plochý hex atlas
     const c = (fc.meta && fc.meta.center) || [17.11, 48.15];
     map.flyTo({ center: c, zoom: 11.1, pitch: 28, bearing: -14, duration: 1500, essential: true });
     hint.textContent = 'atlas (zjednodušený)';
@@ -979,6 +1029,8 @@ function initAtlasRuntime() {
     f.properties.q_index = compositeOf(f.properties);
   }
   if (map.getSource('grid')) map.getSource('grid').setData(gridData);
+  joinBuildingsToGrid();   // prenes q_*/m_* na budovy a prekresli ich farbu
+  applyGridColor();        // zafarbi budovy podľa aktuálneho indikátora
 }
 
 function addFacility(cat, ll, isOpt) {
@@ -1137,7 +1189,7 @@ function closeLandmarkCard() { document.getElementById('lmcard').hidden = true; 
 
 /* ---------- guided tour ---------- */
 const TOUR = [
-  { title:'Celá Bratislava', center:[17.1150,48.1500], zoom:11.4, pitch:28, bearing:-14,
+  { title:'Celá Bratislava', center:[17.1150,48.1500], zoom:11.8, pitch:47, bearing:-14,
     text:'Mapa kvality života cez <b>obytné územie celého mesta</b>. Každý hexagón je jedna oblasť, farba = skóre. Žiariace akvamarínové jadro vs tmavé okraje: <b>každá piata oblasť je autozávislá.</b>' },
   { title:'Bratislavský hrad', focus:[17.1003,48.1419], icon:'🏰', zoom:15.6, pitch:64, bearing:24,
     text:'Hradný kopec a pod ním <b>nízke historické jadro</b> — Staré Mesto si stáročia drží drobnú mierku.' },
@@ -1209,7 +1261,6 @@ function wireUI() {
       layers.forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', v));
     });
   };
-  toggle('t-grid', 'grid', 'grid-edge');
   toggle('t-buildings', 'buildings', 'buildings-hi');
   toggle('t-amenities', 'amenities');
   toggle('t-green', 'green', 'green-edge');
@@ -1231,10 +1282,15 @@ function wireUI() {
     }
   });
 
-  // onboarding
+  // onboarding — kino-cover sa odplaví a kamera doletí do mesta
   const intro = document.getElementById('intro');
-  document.getElementById('intro-explore').addEventListener('click', () => intro.hidden = true);
-  document.getElementById('intro-tour').addEventListener('click', () => { intro.hidden = true; playTour(); });
+  const leaveIntro = (then, fly = true) => {
+    intro.classList.add('leaving');
+    if (fly) map.easeTo({ center: [17.108, 48.150], zoom: 13.0, pitch: 54, bearing: -18, duration: 1700, essential: true });
+    setTimeout(() => { intro.hidden = true; intro.classList.remove('leaving'); if (then) then(); }, 560);
+  };
+  document.getElementById('intro-explore').addEventListener('click', () => leaveIntro());
+  document.getElementById('intro-tour').addEventListener('click', () => leaveIntro(() => playTour(), false));
 
   // karta pamiatky — zatvorenie + akcia
   document.getElementById('lmcard-close').addEventListener('click', closeLandmarkCard);
