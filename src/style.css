@@ -427,7 +427,16 @@ body.city-mode #block-planner,body.city-mode .ask-fab,body.city-mode #block-catl
 .btn.wide{flex:1;white-space:nowrap}
 .intro-src{font-size:10.5px;color:var(--ink-faint);text-align:center}
 @media (max-width:760px){
-  .intro-title{font-size:22px}.intro-actions{flex-direction:column}.btn.wide{width:100%}
+  /* mobil: plný nepriehľadný závoj (desktop gradient nechával pravú stranu presvitať = appka pod ním),
+     obsah zhora a scrollovateľný, tlačidlá v stĺpci na plnú šírku */
+  .intro{align-items:flex-start;overflow-y:auto;padding:32px 20px 40px;background:var(--bg)}
+  .cover-inner{width:100%;margin:auto 0}
+  .cover-title{font-size:clamp(30px,8.5vw,40px);letter-spacing:-1px;margin-bottom:16px}
+  .cover-lead{font-size:15px;margin-bottom:22px}
+  .cover-stats{gap:10px;margin-bottom:24px}
+  .cover-stats .cs{min-width:120px}
+  .cover-actions{flex-direction:column;align-items:stretch;gap:10px}
+  .cover-actions .btn,.cover-actions .btn-ghost{width:100%;justify-content:center}
 }
 
 /* ---------- inspector ---------- */
