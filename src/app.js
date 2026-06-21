@@ -4,30 +4,31 @@
 
 const DATA = (f) => `data/${f}`;
 
-/* ---- height → color ramp (metre) ---- */
+/* ---- height → color ramp (metre) ---- MIB indigo monochróm: čím vyššia budova,
+   tým sýtejšie indigo. Číta sa ako fyzický architektonický model pod jedným svetlom. */
 const HEIGHT_RAMP = [
-  0, '#21303a', 8, '#27606b', 15, '#2f8f8a', 25, '#46e0d0',
-  40, '#bfe27a', 60, '#ffc24b', 90, '#ff7a45', 130, '#ff4d4d',
+  0, '#ded9ee', 8, '#c5bee2', 15, '#a99fd3', 25, '#8b7dc4',
+  40, '#6b5cb0', 60, '#4f4099', 90, '#3c2f86', 130, '#30287B',
 ];
-/* ---- kvalita 0–100 → moderná percepčne čistá sekvenčná škála ----
-   Tmavá indigo (slabá) → fialová → korálová → jantár → limetka → akvamarín (špička).
-   Inšpirované magma/viridis: žiadne blatisté stredné tóny, každý stupeň jasne odlíšiteľný,
-   a poradie funguje aj pri čiastočnej farbosleposti (svetlosť rastie monotónne so skóre). */
+/* ---- kvalita 0–100 → divergentná MIB škála ----
+   Červená (slabá) → jantár → neutrálna levanduľa → modrá → indigo (špička).
+   Póly sú vlastné MIB farby: červená #e4564f (najhoršie) a indigo #30287B (najlepšie),
+   takže „dobré miesto" svieti značkovou indigo — vizuálne hovorí jazykom MIB. */
 const ACCESS_RAMP = [
-  22, '#3a1d52', 32, '#7a2a6e', 42, '#b83a63', 50, '#e35a54',
-  58, '#f57c3d', 66, '#f7a83b', 74, '#d7df58', 84, '#37e0b0',
+  22, '#e4564f', 32, '#ee8a52', 42, '#f4b860', 50, '#c2c3cf',
+  58, '#86c2ed', 66, '#4ec5f9', 74, '#4a3f93', 84, '#30287B',
 ];
 /* zoradené stopy (pre legendu / CSS gradient) */
-const ACCESS_STOPS = ['#3a1d52','#7a2a6e','#b83a63','#e35a54','#f57c3d','#f7a83b','#d7df58','#37e0b0'];
-/* ---- kategórie dennej vybavenosti (poradie = riadky v karte) ---- */
+const ACCESS_STOPS = ['#e4564f','#ee8a52','#f4b860','#c2c3cf','#86c2ed','#4ec5f9','#4a3f93','#30287B'];
+/* ---- kategórie dennej vybavenosti (poradie = riadky v karte) — MIB akcentová paleta ---- */
 const CAT_META = {
-  obchod:  { emoji:'🛒', label:'Obchod',   acc:'obchod',   color:'#5dade2', rad:700  },
-  zastavka:{ emoji:'🚏', label:'Zastávka', acc:'zastávku', color:'#58d68d', rad:400  },
-  lekaren: { emoji:'💊', label:'Lekáreň',  acc:'lekáreň',  color:'#bb8fce', rad:700  },
-  lekar:   { emoji:'🩺', label:'Lekár',    acc:'lekára',   color:'#ec7063', rad:1000 },
-  skola:   { emoji:'🏫', label:'Škola',    acc:'školu',    color:'#f4d03f', rad:1000 },
-  skolka:  { emoji:'🧸', label:'Škôlka',   acc:'škôlku',   color:'#f5b041', rad:800  },
-  park:    { emoji:'🌳', label:'Park',     acc:'park',     color:'#45b39d', rad:500  },
+  obchod:  { emoji:'🛒', label:'Obchod',   acc:'obchod',   color:'#4ec5f9', rad:700  },
+  zastavka:{ emoji:'🚏', label:'Zastávka', acc:'zastávku', color:'#29b826', rad:400  },
+  lekaren: { emoji:'💊', label:'Lekáreň',  acc:'lekáreň',  color:'#8a7fc8', rad:700  },
+  lekar:   { emoji:'🩺', label:'Lekár',    acc:'lekára',   color:'#e4564f', rad:1000 },
+  skola:   { emoji:'🏫', label:'Škola',    acc:'školu',    color:'#f4b860', rad:1000 },
+  skolka:  { emoji:'🧸', label:'Škôlka',   acc:'škôlku',   color:'#ef9d3a', rad:800  },
+  park:    { emoji:'🌳', label:'Park',     acc:'park',     color:'#4aa84e', rad:500  },
 };
 const CAT_ORDER = ['obchod','zastavka','lekaren','lekar','skola','skolka','park'];
 /* ---- Atlas kvality života: 6 rozmerov + kompozit ---- */
@@ -104,7 +105,7 @@ let focusMarker = null;
 
 /* ---- atmosphere presets ---- */
 const MOODS = {
-  day:   { bg:'#e9e8e2', light:[1.5,0.7,0.35], lightPos:[1.3,120,38], boost:1.0,  fog:'rgba(180,190,200,.0)' },
+  day:   { bg:'#eeedf4', light:[1.5,0.7,0.35], lightPos:[1.3,120,38], boost:1.0,  fog:'rgba(180,190,200,.0)' },
   dusk:  { bg:'#0a0c14', light:[1.0,0.45,0.55],lightPos:[1.4,250,28], boost:1.06, fog:'rgba(255,120,70,.08)' },
   night: { bg:'#05070c', light:[0.7,0.35,0.7], lightPos:[1.5,300,70], boost:1.18, fog:'rgba(40,70,120,.12)' },
 };
@@ -190,9 +191,9 @@ map.on('load', async () => {
 
   /* water — jemná pastelová modrá, nech Dunaj vystúpi na papieri */
   map.addLayer({ id: 'water', type: 'fill', source: 'water',
-    paint: { 'fill-color': '#a6cfe4', 'fill-opacity': 0.92 } });
+    paint: { 'fill-color': '#bcdcf3', 'fill-opacity': 0.92 } });
   map.addLayer({ id: 'water-edge', type: 'line', source: 'water',
-    paint: { 'line-color': '#7fb7d8', 'line-width': 1.1, 'line-opacity': 0.7 } });
+    paint: { 'line-color': '#7cc0ec', 'line-width': 1.1, 'line-opacity': 0.7 } });
   /* rieky a kanály (Chorvátske rameno…) ako línie */
   map.addLayer({ id: 'rivers', type: 'line', source: 'rivers',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -235,7 +236,7 @@ map.on('load', async () => {
   /* districts */
   map.addLayer({ id: 'districts', type: 'line', source: 'districts',
     layout: { visibility: 'none' },
-    paint: { 'line-color': '#0e9e84', 'line-width': 1.4, 'line-opacity': 0.6,
+    paint: { 'line-color': '#30287B', 'line-width': 1.4, 'line-opacity': 0.6,
       'line-dasharray': [3, 2] } });
 
   /* Hex vrstva — pre Bratislavu SKRYTÁ: kvalitu nesú priamo 3D budovy (farba = skóre).
@@ -264,7 +265,7 @@ map.on('load', async () => {
     layout: { visibility: 'none' },
     paint: {
       'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'sc'],
-        0, '#ff2d2d', 3, '#ff5a3c', 5, '#ff8c42'],
+        0, '#cf3b34', 3, '#e4564f', 5, '#ee8a52'],
       'fill-extrusion-height': ['get', 'h'],
       'fill-extrusion-base': ['get', 'min'],
       'fill-extrusion-opacity': 0.97,
@@ -355,8 +356,8 @@ function buildingColorExpr() {
 }
 
 /* ---------- Atlas: výber indikátora ---------- */
-/* minúty pešo: 0 = výborne (akvamarín) → 18+ = ďaleko (tmavá indigo). Inverz hlavnej škály. */
-const MIN_RAMP_ATLAS = [0, '#37e0b0', 4, '#d7df58', 7, '#f7a83b', 10, '#f57c3d', 13, '#b83a63', 18, '#3a1d52'];
+/* minúty pešo: 0 = výborne (indigo) → 18+ = ďaleko (červená). Inverz hlavnej MIB škály. */
+const MIN_RAMP_ATLAS = [0, '#30287B', 4, '#4ec5f9', 7, '#86c2ed', 10, '#c2c3cf', 13, '#f4b860', 18, '#e4564f'];
 function gridColorExpr() {
   if (indicator === 'access' && catLens)
     return ['interpolate', ['linear'], ['coalesce', ['get', 'm_' + catLens], 30], ...MIN_RAMP_ATLAS];
@@ -563,9 +564,9 @@ function setCatLens(cat) {
 
 /* ---------- zistenia (atlas: 6 rozmerov + kompozit) ---------- */
 function ACCESS_COLOR(v) {       // farba podľa skóre 0–100 (harmonizované s mapovou škálou)
-  return v >= 84 ? '#37e0b0' : v >= 74 ? '#d7df58' : v >= 66 ? '#f7a83b'
-       : v >= 58 ? '#f57c3d' : v >= 50 ? '#e35a54' : v >= 42 ? '#b83a63'
-       : v >= 32 ? '#7a2a6e' : '#3a1d52';
+  return v >= 84 ? '#30287B' : v >= 74 ? '#4a3f93' : v >= 66 ? '#4ec5f9'
+       : v >= 58 ? '#86c2ed' : v >= 50 ? '#c2c3cf' : v >= 42 ? '#f4b860'
+       : v >= 32 ? '#ee8a52' : '#e4564f';
 }
 function buildFindings(grid) {
   const cells = (grid && grid.features) || [];
@@ -942,7 +943,7 @@ function refreshAskFoot() {
 let airLoaded = false;
 function pmColor() {
   return ['interpolate', ['linear'], ['get', 'pm25'],
-    0, '#2ecc71', 10, '#a3d977', 20, '#f4d03f', 25, '#e67e22', 50, '#e74c3c', 90, '#9b2d6f'];
+    0, '#29b826', 10, '#a3c948', 20, '#f4b860', 25, '#ef9d3a', 50, '#e4564f', 90, '#8a3a8e'];
 }
 async function loadAir(refresh) {
   const note = document.getElementById('air-note');
@@ -997,6 +998,46 @@ async function loadAir(refresh) {
 }
 function airLabel(v) {
   return v < 10 ? 'výborné ovzdušie' : v < 20 ? 'dobré' : v < 25 ? 'prijateľné' : v < 50 ? 'zhoršené' : 'zlé ovzdušie';
+}
+
+/* ========== vrstva: reálne projekty MIB (mib.sk) ==========
+   Dáta z verejného MIB REST API, umiestnené podľa MESTSKEJ ČASTI (nie presná adresa),
+   ofarbené podľa stavu. Klik = otvorí projekt na mib.sk. Fail-safe: pri chybe sa nič nedeje. */
+let mibLoaded = false;
+async function loadMib() {
+  const note = document.getElementById('mib-note');
+  try {
+    if (note) { note.hidden = false; note.textContent = 'Načítavam projekty MIB…'; }
+    const r = await fetch(DATA('mib_projects.geojson'));
+    const fc = await r.json();
+    map.addSource('mib-proj', { type: 'geojson', data: fc });
+    map.addLayer({ id: 'mib-glow', type: 'circle', source: 'mib-proj', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 11, 15, 26],
+      'circle-color': ['get', 'color'], 'circle-opacity': 0.16, 'circle-blur': 1 } });
+    map.addLayer({ id: 'mib-proj', type: 'circle', source: 'mib-proj', paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4.5, 15, 9],
+      'circle-color': ['get', 'color'],
+      'circle-stroke-width': 1.6, 'circle-stroke-color': '#fff', 'circle-opacity': 0.96 } });
+    map.on('click', 'mib-proj', (e) => {
+      const p = e.features[0].properties;
+      new maplibregl.Popup({ closeButton: true, className: 'air-pop mib-pop', maxWidth: '260px' })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<span class="mib-st" style="background:${p.color}"></span>` +
+          `<b>${p.title}</b>` +
+          `<div class="mib-meta">${p.status} · ${p.section}${p.year ? ' · ' + p.year : ''}</div>` +
+          `<a class="mib-link" href="${p.link}" target="_blank" rel="noopener">Otvoriť na mib.sk →</a>`)
+        .addTo(map);
+    });
+    map.on('mouseenter', 'mib-proj', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'mib-proj', () => map.getCanvas().style.cursor = '');
+    mibLoaded = true;
+    if (note) note.innerHTML = `📍 ${fc.features.length} projektov MIB · podľa mestskej časti · zdroj <b>mib.sk</b>`;
+    return fc.features.length;
+  } catch (e) {
+    if (note) { note.hidden = false; note.textContent = '⚠️ Projekty MIB sa nepodarilo načítať.'; }
+    return 0;
+  }
 }
 
 /* ---------- Atlas runtime + plánovacie pieskovisko ---------- */
@@ -1279,6 +1320,19 @@ function wireUI() {
     } else {
       ['air-glow', 'air'].forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', 'none'));
       document.getElementById('air-note').hidden = true;
+    }
+  });
+
+  // vrstva projektov MIB — lazy load + toggle
+  const tMib = document.getElementById('t-mib');
+  if (tMib) tMib.addEventListener('change', async (e) => {
+    document.body.classList.toggle('show-mib', e.target.checked);
+    if (e.target.checked) {
+      if (!mibLoaded) { e.target.disabled = true; await loadMib(); e.target.disabled = false; }
+      ['mib-glow', 'mib-proj'].forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', 'visible'));
+    } else {
+      ['mib-glow', 'mib-proj'].forEach(l => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', 'none'));
+      const n = document.getElementById('mib-note'); if (n) n.hidden = true;
     }
   });
 

@@ -3,13 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Bratislava 3D · Atlas mesta z otvorených dát</title>
-<meta name="description" content="Interaktívny 3D model Bratislavy postavený výhradne z otvorených geodát. Výška zástavby, mestská zeleň a štruktúra mesta — bez API kľúča, v prehliadači." />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<title>Bratislava · Atlas 15-minútového mesta z otvorených dát</title>
+<meta name="description" content="Interaktívny dátový atlas Bratislavy z otvorených geodát: dostupnosť pešo, kvalita života a štruktúra mesta — render v prehliadači, bez API kľúča. Portfóliový prototyp v duchu Metropolitného inštitútu Bratislavy." />
+<link rel="preload" href="fonts/OverusedGrotesk-VF.woff2" as="font" type="font/woff2" crossorigin />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=atlas10" rel="stylesheet" />
+<link href="src/style.css?v=mib1" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -20,7 +18,7 @@
       <span class="dot"></span>
       <div>
         <strong>Bratislava&nbsp;3D</strong>
-        <em>Atlas mesta z otvorených dát</em>
+        <em>Atlas 15-minútového mesta</em>
       </div>
     </div>
     <div class="topmeta">
@@ -117,8 +115,16 @@
           <label class="tg"><input type="checkbox" id="t-roads" checked><span>Ulice a železnica</span></label>
           <label class="tg"><input type="checkbox" id="t-districts"><span>Hranice mestských častí</span></label>
           <label class="tg"><input type="checkbox" id="t-air"><span>🟢 Ovzdušie naživo (IoT)</span></label>
+          <label class="tg"><input type="checkbox" id="t-mib"><span>📍 Projekty MIB (klik = mib.sk)</span></label>
         </div>
         <p class="micro" id="air-note" hidden></p>
+        <p class="micro" id="mib-note" hidden></p>
+        <div class="mib-legend" id="mib-legend">
+          <span class="ml"><i style="background:#f4b860"></i>Príprava</span>
+          <span class="ml"><i style="background:#4ec5f9"></i>Povoľovanie</span>
+          <span class="ml"><i style="background:#30287B"></i>Realizácia</span>
+          <span class="ml"><i style="background:#29b826"></i>Ukončené</span>
+        </div>
       </section>
 
       <section class="block">
@@ -146,6 +152,7 @@
     <footer class="panel-foot">
       <span>Dáta © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · ODbL</span>
       <span>MapLibre GL · render v prehliadači</span>
+      <span>Portfóliový prototyp · v duchu <a href="https://mib.sk/" target="_blank" rel="noopener">Metropolitného inštitútu Bratislavy</a></span>
     </footer>
   </aside>
 
@@ -227,7 +234,7 @@
   <!-- uvítací úvod / onboarding -->
   <div class="intro" id="intro" hidden>
     <div class="cover-inner">
-      <div class="cover-kicker"><span class="cover-dot"></span> Dátový atlas mesta · otvorené dáta</div>
+      <div class="cover-kicker"><span class="cover-dot"></span> Dátový atlas mesta · v duchu MIB</div>
       <h1 class="cover-title">Je Bratislava<br><em>15-minútové</em> mesto?</h1>
       <p class="cover-lead">
         Dobré miesto na život má školu, škôlku, lekára, lekáreň, obchod, zastávku a park
@@ -242,7 +249,7 @@
         <button class="btn btn-primary" id="intro-explore">Preskúmaj mapu ↓</button>
         <button class="btn btn-ghost" id="intro-tour">▶ Spustiť prehliadku</button>
       </div>
-      <div class="cover-src">Dáta © OpenStreetMap (ODbL) · MapLibre · render v prehliadači, bez API kľúča</div>
+      <div class="cover-src">Dáta © OpenStreetMap (ODbL) · MapLibre · render v prehliadači, bez API kľúča · portfóliový prototyp v duchu MIB</div>
     </div>
   </div>
 
@@ -254,6 +261,6 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=atlas11"></script>
+  <script src="src/app.js?v=mib1"></script>
 </body>
 </html>

@@ -132,6 +132,27 @@ budov). Riešenie je učebnicové: **dlaždicovanie** (mriežka malých dopytov)
 **failover cez viac mirrorov** a **de-duplikácia** podľa OSM id. Neviditeľný kus
 práce, ktorý rozhoduje, či dáta vôbec dostaneš.
 
+### 8. Vizuálny jazyk — vedome v rodine MIB
+
+Nástroj nemá pôsobiť ako „ešte jedna dátová appka", ale ako niečo, čo by mohlo vyjsť
+**z dielne Metropolitného inštitútu Bratislavy**. Preto je celý vizuál postavený na
+ich brand DNA, nie na generickej palete:
+
+- **Typografia: Overused Grotesk** — doslova font, na ktorom jazdí TU-BA (tuba.mib.sk).
+  Vedľa Aktiv Grotesku z mib.sk je to tá istá grotesk-rodina, takže nástroj „znie"
+  ako MIB už na úrovni písma. Self-hostovaný (žiadny Google Fonts), variabilný.
+- **Farba: MIB indigo `#30287B`** ako značkový akcent na **levanduľovo-bielych
+  plochách** (`#eeedf4` / `#fcfffd`) — presné tóny z mib.sk. Akcenty (červená `#e4564f`,
+  modrá `#4ec5f9`, jantár `#f4b860`, zelená `#29b826`) sú tiež ich.
+- **Dátová škála hovorí značkou:** index kvality 0→100 ide **červená (slabé) →
+  jantár → modrá → indigo (špička)** — „dobré miesto na život" doslova svieti
+  značkovou MIB indigo. Výška budov je indigo monochróm — architektonický model
+  pod jedným svetlom.
+
+Je to **MIB-inšpirované, no s vlastnou identitou** — nepredstiera, že je oficiálny
+produkt MIB (footer to priznáva: *portfóliový prototyp v duchu MIB*). To je rozdiel
+medzi „skopíroval som web" a „rozumiem brandu a viem v ňom pracovať".
+
 ## Čo by bolo ďalej (mám rozmyslené)
 
 - **Skutočné izochróny** cez routovací engine (OSRM/Valhalla) namiesto vzdušnej čiary.
