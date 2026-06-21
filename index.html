@@ -33,6 +33,19 @@
     <button class="panel-collapse" id="panel-collapse" aria-label="Skryť panel">‹</button>
 
     <div class="panel-scroll">
+      <section class="block viewseg-block" style="margin-top:0;padding-top:0;border-top:0">
+        <div class="seg seg-view" id="seg-view">
+          <button data-view="model" class="active">🏙 Biely model</button>
+          <button data-view="atlas">📊 Atlas kvality</button>
+        </div>
+      </section>
+
+      <section class="block model-only" id="block-model" style="margin-top:18px">
+        <p class="micro" style="margin-top:0">Celé mesto ako <b>biely architektonický model</b> — ~85 000 budov z OSM, vykreslených cez vektorové dlaždice (pmtiles). Inšpirované <b>The London Model</b> (NLA).</p>
+        <label class="tg" style="margin-top:8px"><input type="checkbox" id="t-massheight"><span>Zafarbiť podľa výšky budov</span></label>
+        <p class="micro" id="model-note"></p>
+      </section>
+
       <section class="story">
         <h1 id="story-title">15-minútové mesto</h1>
         <p id="story-text">
@@ -42,24 +55,24 @@
         </p>
       </section>
 
-      <section class="block" id="block-city" style="margin-top:0;padding-top:0;border-top:0">
+      <section class="block atlas-only" id="block-city">
         <div class="block-head"><h2>Mesto</h2><span class="hint" id="city-mode-hint"></span></div>
         <div class="cityseg" id="cityseg"></div>
       </section>
 
-      <section class="block">
+      <section class="block atlas-only" id="block-atlas">
         <div class="block-head"><h2>Atlas — zafarbiť mesto podľa</h2></div>
         <div class="indsel" id="indsel"></div>
         <p class="micro" id="ind-desc">Kompozitný index kvality života — 6 rozmerov v jednom čísle.</p>
       </section>
 
-      <section class="block" id="block-weights">
+      <section class="block atlas-only" id="block-weights">
         <div class="block-head"><h2>Váhy indexu</h2><span class="hint">čo je pre teba dôležité?</span></div>
         <div class="weights" id="weights"></div>
         <button class="wreset" id="weights-reset">Vyrovnať váhy</button>
       </section>
 
-      <section class="block" id="block-planner">
+      <section class="block atlas-only" id="block-planner">
         <div class="block-head"><h2>Plánovač — postav a meraj</h2></div>
         <label class="tg"><input type="checkbox" id="t-planner"><span>Režim plánovača</span></label>
         <div id="planner-tools" hidden>
@@ -74,13 +87,13 @@
         </div>
       </section>
 
-      <section class="block" id="block-catlens" hidden>
+      <section class="block atlas-only" id="block-catlens" hidden>
         <div class="block-head"><h2>Kde chýba konkrétna potreba</h2></div>
         <div class="catlens" id="catlens"></div>
         <p class="micro" id="catlens-hint">Vyber potrebu a uvidíš, <b>kde k nej ľudia majú ďaleko</b>.</p>
       </section>
 
-      <section class="block">
+      <section class="block atlas-only">
         <div class="block-head">
           <h2 id="legend-title">Index kvality miesta</h2>
           <span class="hint" id="legend-unit">0 = slabá · 100 = špička</span>
@@ -88,17 +101,17 @@
         <div class="legend" id="legend"></div>
       </section>
 
-      <section class="block">
+      <section class="block atlas-only">
         <label class="tg"><input type="checkbox" id="t-weak"><span>Zvýrazni najhoršie oblasti</span></label>
         <p class="micro">Nechá len budovy s nízkym skóre v zvolenom rozmere — kde mesto zaostáva.</p>
       </section>
 
-      <section class="block" id="block-findings">
+      <section class="block atlas-only" id="block-findings">
         <div class="block-head"><h2>Zistenia</h2></div>
         <div class="findings" id="findings"></div>
       </section>
 
-      <section class="block" id="block-cities">
+      <section class="block atlas-only" id="block-cities">
         <div class="block-head"><h2>Porovnanie miest</h2><span class="hint">% v 15-min meste</span></div>
         <div class="cities" id="cities"></div>
         <p class="micro">Podiel obytných oblastí s 6+/7 potrebami do 15 min pešo (rovnaká metóda, ~10 km okolo centra). <b>Bratislava je 4. z 5</b> — za Viedňou, Prahou aj Budapešťou, no pred Brnom.</p>
@@ -261,6 +274,7 @@
   </div>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="src/app.js?v=mib2"></script>
+  <script src="https://unpkg.com/pmtiles@4.4.1/dist/pmtiles.js"></script>
+  <script src="src/app.js?v=model1"></script>
 </body>
 </html>

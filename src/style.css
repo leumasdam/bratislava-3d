@@ -358,6 +358,20 @@ body.show-mib .mib-legend{display:flex}
 .mib-pop .mib-link{display:inline-block;font-size:12px;font-weight:600;color:var(--accent);text-decoration:none}
 .mib-pop .mib-link:hover{text-decoration:underline}
 
+/* ---------- pohľad: Biely model (London) vs Atlas kvality ---------- */
+.seg-view{margin-bottom:2px}
+.seg-view button{font-weight:600;letter-spacing:.1px}
+body.view-model .atlas-only{display:none}
+body.view-atlas .model-only{display:none}
+/* štúdiový nádych — biely model „svieti" na tmavom podstavci ako fyzický model */
+body.view-model::before{
+  background:radial-gradient(125% 100% at 50% 40%,transparent 38%,rgba(8,10,16,.5) 74%,rgba(4,5,9,.86) 100%)}
+body.view-model .topbar{background:linear-gradient(180deg,rgba(10,12,18,.72),rgba(10,12,18,0))}
+body.view-model .brand strong{color:#eef0f6}
+body.view-model .brand em{color:#aeb2c6}
+body.view-model .topmeta{color:#c7cad8;background:rgba(20,22,32,.5);border-color:rgba(255,255,255,.12)}
+body.view-model .topmeta b{color:#fff}
+
 /* ---------- AI asistent „Spýtaj sa mesta" ---------- */
 .ask-fab{position:absolute;right:18px;bottom:18px;z-index:8;display:flex;align-items:center;gap:9px;
   padding:12px 18px;border-radius:999px;border:1px solid rgba(48,40,123,.4);cursor:pointer;

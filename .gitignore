@@ -6,3 +6,9 @@ __pycache__/
 
 data/svk_pop.tif
 data/gtfs_ba.zip
+
+.vercel
+
+# celomestský 3D build — dočasné artefakty (do pmtiles)
+data/buildings_full.geojson
+_tiles/

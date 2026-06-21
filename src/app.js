@@ -121,6 +121,17 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
 
+/* pmtiles protokol — celomestský 3D model budov z vektorových dlaždíc */
+if (window.pmtiles) {
+  try { maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile); } catch (e) { console.warn('pmtiles protokol:', e); }
+}
+const PMTILES_URL = location.href.replace(/[^/]*(\?.*)?$/, '') + 'data/buildings.pmtiles';
+
+/* biele masívne budovy (London look) — chladná takmer-biela, tmavšia s výškou */
+const MASS_WHITE = ['interpolate', ['linear'], ['get', 'h'],
+  0, '#fbfbff', 12, '#f1f2f8', 30, '#e6e7f1', 70, '#d8dae8', 140, '#cccedf'];
+let view = 'model';
+
 let buildingsData = null;
 let hoveredId = null;
 let currentMood = 'day';
@@ -148,6 +159,41 @@ function applyLight(mood) {
     map.setPaintProperty('buildings', 'fill-extrusion-vertical-gradient', true);
   }
   document.body.style.setProperty('--mood-fog', m.fog);
+}
+
+/* ---------- pohľad: Biely model (celé mesto, pmtiles) vs Atlas kvality ---------- */
+function setMassColor() {
+  if (!map.getLayer('buildings-full')) return;
+  const byH = document.getElementById('t-massheight') && document.getElementById('t-massheight').checked;
+  map.setPaintProperty('buildings-full', 'fill-extrusion-color',
+    byH ? ['interpolate', ['linear'], ['get', 'h'], ...HEIGHT_RAMP] : MASS_WHITE);
+  const note = document.getElementById('model-note');
+  if (note) note.textContent = byH ? 'Výška budovy → sýtosť indigo (0 → 130 m+).' : '';
+}
+function setView(v) {
+  view = v;
+  document.body.classList.toggle('view-model', v === 'model');
+  document.body.classList.toggle('view-atlas', v === 'atlas');
+  document.querySelectorAll('#seg-view button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  const vis = (l, s) => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', s);
+  if (v === 'model') {
+    vis('buildings-full', 'visible');
+    ['buildings', 'buildings-weak', 'grid', 'amenities'].forEach(l => vis(l, 'none'));
+    map.setPaintProperty('bg', 'background-color', '#0c0e15');
+    try { map.setLight({ anchor: 'map', color: '#ffffff', intensity: 0.32, position: [1.5, 205, 22] }); } catch (e) {}
+    setMassColor();
+    document.getElementById('story-title').textContent = 'Model mesta';
+    document.getElementById('story-text').innerHTML =
+      'Celá Bratislava ako <b>biely architektonický model</b> z otvorených dát — ~85 000 budov v 3D. Otáčaj (pravý klik) a približuj.';
+  } else {
+    vis('buildings-full', 'none');
+    const tb = document.getElementById('t-buildings');
+    if (tb && tb.checked) vis('buildings', 'visible');
+    const ta = document.getElementById('t-amenities');
+    vis('amenities', ta && ta.checked ? 'visible' : 'none');
+    applyLight(currentMood);
+    setIndicator(indicator);
+  }
 }
 
 /* ---------- build the scene ---------- */
@@ -249,6 +295,20 @@ map.on('load', async () => {
       'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.85, 13, 0.74, 15, 0.5],
     } });
 
+  /* CELOMESTSKÝ biely model — všetky budovy BA z pmtiles (vektorové dlaždice).
+     Default pohľad „Biely model"; v Atlase sa skryje a vystúpia analytické budovy. */
+  if (window.pmtiles) {
+    map.addSource('bld', { type: 'vector', url: 'pmtiles://' + PMTILES_URL, attribution: '© OpenStreetMap (ODbL)' });
+    map.addLayer({ id: 'buildings-full', type: 'fill-extrusion', source: 'bld', 'source-layer': 'building', minzoom: 10.5,
+      paint: {
+        'fill-extrusion-color': MASS_WHITE,
+        'fill-extrusion-height': ['get', 'h'],
+        'fill-extrusion-base': ['coalesce', ['get', 'min'], 0],
+        'fill-extrusion-opacity': 0.97,
+        'fill-extrusion-vertical-gradient': true,
+      } });
+  }
+
   /* 3D buildings (farba sa nastaví cez setLens) */
   map.addLayer({ id: 'buildings', type: 'fill-extrusion', source: 'buildings',
     paint: {
@@ -316,7 +376,7 @@ map.on('load', async () => {
   map.on('mouseleave', 'grid', () => map.getCanvas().style.cursor = '');
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, addFacility, runOptimizer, setPlanner: (v) => { document.getElementById('t-planner').checked = v; document.getElementById('t-planner').dispatchEvent(new Event('change')); }, LANDMARKS, INDICATORS, CAT_ORDER, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setView, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, addFacility, runOptimizer, setPlanner: (v) => { document.getElementById('t-planner').checked = v; document.getElementById('t-planner').dispatchEvent(new Event('change')); }, LANDMARKS, INDICATORS, CAT_ORDER, TOUR };
   window.__ready = true;
 
   /* hover budov */
@@ -1337,6 +1397,14 @@ function wireUI() {
   });
   // projekty MIB zapnuté hneď po štarte (default-on) — viditeľné bez kliku
   if (tMib) { tMib.checked = true; tMib.dispatchEvent(new Event('change')); }
+
+  // prepínač pohľadu: Biely model ↔ Atlas kvality
+  document.querySelectorAll('#seg-view button').forEach(b =>
+    b.addEventListener('click', () => setView(b.dataset.view)));
+  const tmh = document.getElementById('t-massheight');
+  if (tmh) tmh.addEventListener('change', setMassColor);
+  // default = biely model (London look)
+  setView('model');
 
   // onboarding — kino-cover sa odplaví a kamera doletí do mesta
   const intro = document.getElementById('intro');
