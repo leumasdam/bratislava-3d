@@ -46,6 +46,28 @@ def height_of(tags):
             "retail": 7, "commercial": 12, "office": 18, "hospital": 16,
             "house": 7, "detached": 7, "garage": 3, "shed": 3, "hut": 3}.get(b, 9.0)
 
+def kind_of(tags, h):
+    """materiálová trieda budovy → kód (farba sa priradí v appke):
+    0 default · 1 byty/dom · 2 sklo/kancelária · 3 civic/kameň · 4 priemysel · 5 retail"""
+    b = (tags.get("building") or "yes").lower()
+    if h >= 45:  # výškové = takmer vždy sklené veže
+        return 2
+    if b in ("office", "commercial"):
+        return 2
+    if b in ("residential", "apartments", "house", "detached", "dormitory",
+             "terrace", "semidetached_house", "bungalow"):
+        return 1
+    if b in ("church", "cathedral", "chapel", "monastery", "civic", "public",
+             "government", "university", "college", "school", "hospital",
+             "museum", "train_station", "palace", "castle", "temple"):
+        return 3
+    if b in ("industrial", "warehouse", "manufacture", "factory",
+             "garage", "garages", "shed", "hangar", "service"):
+        return 4
+    if b in ("retail", "supermarket", "kiosk", "mall"):
+        return 5
+    return 0
+
 def min_height_of(tags):
     mh = tags.get("min_height")
     if mh:
@@ -92,12 +114,14 @@ def main():
                     continue
                 seen.add(el["id"])
                 tags = el.get("tags", {})
+                hh = round(height_of(tags), 1)
                 feats.append({
                     "type": "Feature",
                     "geometry": {"type": "Polygon", "coordinates": [ring]},
                     "properties": {
-                        "h": round(height_of(tags), 1),
+                        "h": hh,
                         "min": round(min_height_of(tags), 1),
+                        "k": kind_of(tags, hh),
                     },
                 })
                 added += 1

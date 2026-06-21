@@ -44,7 +44,7 @@ with open(OUT, "wb") as f:
         "vector_layers": [{
             "id": meta["layer"],
             "minzoom": meta["minzoom"], "maxzoom": meta["maxzoom"],
-            "fields": {"h": "Number", "min": "Number"},
+            "fields": {"h": "Number", "min": "Number", "k": "Number"},
         }],
     }
     w.finalize(header, metadata)

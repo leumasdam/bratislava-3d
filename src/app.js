@@ -127,9 +127,18 @@ if (window.pmtiles) {
 }
 const PMTILES_URL = location.href.replace(/[^/]*(\?.*)?$/, '') + 'data/buildings.pmtiles';
 
-/* biele masívne budovy (London look) — chladná takmer-biela, tmavšia s výškou */
-const MASS_WHITE = ['interpolate', ['linear'], ['get', 'h'],
-  0, '#fbfbff', 12, '#f1f2f8', 30, '#e6e7f1', 70, '#d8dae8', 140, '#cccedf'];
+/* materiálový masívny model (London look) — farba podľa triedy budovy `k` + výšky:
+   sklo (modro-chladné, jasnejšie s výškou) · byty (krém) · civic (kameň) · priemysel (sivá) · default (chladná biela) */
+const MASS_GLASS  = ['interpolate', ['linear'], ['get', 'h'], 20, '#cfdaee', 60, '#bdd0ef', 120, '#aecbf3'];
+const MASS_RESID  = ['interpolate', ['linear'], ['get', 'h'], 0, '#f3eee3', 12, '#ece6d7', 30, '#e1dbca'];
+const MASS_DEF    = ['interpolate', ['linear'], ['get', 'h'], 0, '#f2f1f8', 12, '#e8e7f1', 30, '#dadce9', 70, '#cdd0e2'];
+const MASS_WHITE  = ['match', ['get', 'k'],
+  2, MASS_GLASS,
+  1, MASS_RESID,
+  3, '#e8dec9',   // civic / kameň (teplý)
+  4, '#cfd1d8',   // priemysel (sivá)
+  5, '#dde0ec',   // retail (svetlá)
+  MASS_DEF];      // 0 default
 let view = 'model';
 
 let buildingsData = null;
@@ -178,6 +187,7 @@ function setView(v) {
   const vis = (l, s) => map.getLayer(l) && map.setLayoutProperty(l, 'visibility', s);
   if (v === 'model') {
     vis('buildings-full', 'visible');
+    vis('buildings-shadow', 'visible');
     ['buildings', 'buildings-weak', 'grid', 'amenities'].forEach(l => vis(l, 'none'));
     map.setPaintProperty('bg', 'background-color', '#0c0e15');
     try { map.setLight({ anchor: 'map', color: '#ffffff', intensity: 0.32, position: [1.5, 205, 22] }); } catch (e) {}
@@ -187,6 +197,7 @@ function setView(v) {
       'Celá Bratislava ako <b>biely architektonický model</b> z otvorených dát — ~85 000 budov v 3D. Otáčaj (pravý klik) a približuj.';
   } else {
     vis('buildings-full', 'none');
+    vis('buildings-shadow', 'none');
     const tb = document.getElementById('t-buildings');
     if (tb && tb.checked) vis('buildings', 'visible');
     const ta = document.getElementById('t-amenities');
@@ -194,6 +205,79 @@ function setView(v) {
     applyLight(currentMood);
     setIndicator(indicator);
   }
+  if (map.getLayer('landmarks3d')) map.triggerRepaint();
+}
+
+/* ---------- hrdinské 3D landmarky (three.js custom layer) — len v Model pohľade ---------- */
+const HERO = [
+  { type: 'castle',  lng: 17.1003, lat: 48.1419, rot: 0.30 },  // Bratislavský hrad
+  { type: 'ufo',     lng: 17.1046, lat: 48.1378, rot: 0.0 },   // UFO / Most SNP
+  { type: 'pyramid', lng: 17.1233, lat: 48.1556, rot: 0.0 },   // Slovenský rozhlas
+];
+function makeCastle() {
+  const g = new THREE.Group();
+  const wall = new THREE.MeshLambertMaterial({ color: 0xf1efe6 });
+  const roof = new THREE.MeshLambertMaterial({ color: 0x9c4a39 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(72, 24, 52), wall); body.position.y = 12; g.add(body);
+  const top = new THREE.Mesh(new THREE.ConeGeometry(48, 9, 4), roof); top.rotation.y = Math.PI / 4; top.scale.set(1, 1, 0.72); top.position.y = 28.5; g.add(top);
+  const tw = 15, th = 42;
+  [[-36, -26], [36, -26], [-36, 26], [36, 26]].forEach(([x, z]) => {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(tw, th, tw), wall); t.position.set(x, th / 2, z); g.add(t);
+    const c = new THREE.Mesh(new THREE.ConeGeometry(tw * 0.82, 15, 4), roof); c.rotation.y = Math.PI / 4; c.position.set(x, th + 7.5, z); g.add(c);
+  });
+  return g;
+}
+function makeUFO() {
+  const g = new THREE.Group();
+  const steel = new THREE.MeshLambertMaterial({ color: 0xb9c0c9 });
+  for (const s of [-1, 1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(3, 4.5, 86, 14), steel);
+    p.position.set(s * 7, 43, 0); p.rotation.z = s * 0.05; g.add(p);
+  }
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(22, 22, 7, 30), steel); disc.position.y = 87; g.add(disc);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(13, 22, 6, 30), steel); rim.position.y = 82; g.add(rim);
+  return g;
+}
+function makePyramid() {
+  const g = new THREE.Group();
+  const steel = new THREE.MeshLambertMaterial({ color: 0x3c424b });
+  const p = new THREE.Mesh(new THREE.ConeGeometry(34, 64, 4), steel);
+  p.rotation.y = Math.PI / 4; p.rotation.x = Math.PI; p.position.y = 34; g.add(p);
+  return g;
+}
+function buildHero(t) { return t === 'castle' ? makeCastle() : t === 'ufo' ? makeUFO() : makePyramid(); }
+function addLandmarks3D() {
+  if (!window.THREE) return;
+  const layer = {
+    id: 'landmarks3d', type: 'custom', renderingMode: '3d',
+    onAdd(mp, gl) {
+      this.scene = new THREE.Scene();
+      this.camera = new THREE.Camera();
+      this.scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+      const d = new THREE.DirectionalLight(0xffffff, 0.9); d.position.set(-0.4, 0.7, 0.6); this.scene.add(d);
+      const d2 = new THREE.DirectionalLight(0xaecbf3, 0.35); d2.position.set(0.6, 0.4, -0.5); this.scene.add(d2);
+      for (const h of HERO) {
+        const merc = maplibregl.MercatorCoordinate.fromLngLat([h.lng, h.lat], 0);
+        const s = merc.meterInMercatorCoordinateUnits();
+        const obj = buildHero(h.type);
+        obj.matrixAutoUpdate = false;
+        obj.matrix.copy(new THREE.Matrix4().makeTranslation(merc.x, merc.y, merc.z)
+          .multiply(new THREE.Matrix4().makeScale(s, -s, s))
+          .multiply(new THREE.Matrix4().makeRotationX(Math.PI / 2))
+          .multiply(new THREE.Matrix4().makeRotationY(h.rot || 0)));
+        this.scene.add(obj);
+      }
+      this.renderer = new THREE.WebGLRenderer({ canvas: mp.getCanvas(), context: gl, antialias: true });
+      this.renderer.autoClear = false;
+    },
+    render(gl, matrix) {
+      if (view !== 'model' || !this.renderer) return;
+      this.camera.projectionMatrix = new THREE.Matrix4().fromArray(matrix);
+      this.renderer.resetState();
+      this.renderer.render(this.scene, this.camera);
+    },
+  };
+  map.addLayer(layer);
 }
 
 /* ---------- build the scene ---------- */
@@ -299,6 +383,11 @@ map.on('load', async () => {
      Default pohľad „Biely model"; v Atlase sa skryje a vystúpia analytické budovy. */
   if (window.pmtiles) {
     map.addSource('bld', { type: 'vector', url: 'pmtiles://' + PMTILES_URL, attribution: '© OpenStreetMap (ODbL)' });
+    /* fake kontaktný tieň — pôdorysy posunuté a stmavené, dáva modelu plasticitu */
+    map.addLayer({ id: 'buildings-shadow', type: 'fill', source: 'bld', 'source-layer': 'building', minzoom: 12,
+      layout: { visibility: 'none' },
+      paint: { 'fill-color': '#04050a', 'fill-opacity': 0.26,
+        'fill-translate': [5, 7], 'fill-translate-anchor': 'viewport' } });
     map.addLayer({ id: 'buildings-full', type: 'fill-extrusion', source: 'bld', 'source-layer': 'building', minzoom: 10.5,
       paint: {
         'fill-extrusion-color': MASS_WHITE,
@@ -374,6 +463,8 @@ map.on('load', async () => {
   // klik na hex/budovu = pointer
   map.on('mouseenter', 'grid', () => map.getCanvas().style.cursor = 'pointer');
   map.on('mouseleave', 'grid', () => map.getCanvas().style.cursor = '');
+
+  try { addLandmarks3D(); } catch (e) { console.warn('landmarks3d', e); }
 
   // expose for screenshot tooling / debugging
   window.__app = { map, gotoStop, setMood: applyLight, setView, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, addFacility, runOptimizer, setPlanner: (v) => { document.getElementById('t-planner').checked = v; document.getElementById('t-planner').dispatchEvent(new Event('change')); }, LANDMARKS, INDICATORS, CAT_ORDER, TOUR };
