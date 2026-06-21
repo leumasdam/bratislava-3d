@@ -7,7 +7,7 @@
 <meta name="description" content="Interaktívny dátový atlas Bratislavy z otvorených geodát: dostupnosť pešo, kvalita života a štruktúra mesta — render v prehliadači, bez API kľúča. Portfóliový prototyp v duchu Metropolitného inštitútu Bratislavy." />
 <link rel="preload" href="fonts/OverusedGrotesk-VF.woff2" as="font" type="font/woff2" crossorigin />
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-<link href="src/style.css?v=mib1" rel="stylesheet" />
+<link href="src/style.css?v=proj1" rel="stylesheet" />
 </head>
 <body>
   <div id="map"></div>
@@ -160,6 +160,12 @@
           <button id="tour-next" class="btn btn-ghost" aria-label="Ďalšie">›</button>
         </div>
       </section>
+
+      <section class="block">
+        <div class="block-head"><h2>Projekcia / maketa</h2></div>
+        <p class="micro" style="margin-top:0">Skryje rozhranie a prepne na <b>čistý pohľad zhora</b> — na premietanie projektorom na stôl či maketu. Späť klávesom <b>Esc</b>.</p>
+        <button class="btn btn-primary" id="proj-enter" style="width:100%;margin-top:10px">🔦 Projekčný režim</button>
+      </section>
     </div>
 
     <footer class="panel-foot">
@@ -266,6 +272,8 @@
     </div>
   </div>
 
+  <div class="proj-hint" id="proj-hint">Projekčný režim · <b>Esc</b> = späť</div>
+
   <div class="loader" id="loader">
     <div class="loader-inner">
       <div class="loader-bars"><i></i><i></i><i></i><i></i><i></i></div>
@@ -276,6 +284,6 @@
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/pmtiles@4.4.1/dist/pmtiles.js"></script>
   <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-  <script src="src/app.js?v=real1"></script>
+  <script src="src/app.js?v=proj1"></script>
 </body>
 </html>

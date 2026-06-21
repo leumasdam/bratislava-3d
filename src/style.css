@@ -372,6 +372,17 @@ body.view-model .brand em{color:#aeb2c6}
 body.view-model .topmeta{color:#c7cad8;background:rgba(20,22,32,.5);border-color:rgba(255,255,255,.12)}
 body.view-model .topmeta b{color:#fff}
 
+/* ---------- projekčný režim (na premietanie na stôl/maketu) ---------- */
+.proj-hint{display:none}
+body.projector > *:not(#map):not(#proj-hint){display:none!important}
+body.projector .maplibregl-ctrl{display:none!important}
+body.projector::before{display:none}            /* preč vignette/štúdio */
+body.projector #proj-hint{display:block;position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+  z-index:40;font-size:11px;letter-spacing:.4px;color:rgba(255,255,255,.55);
+  background:rgba(0,0,0,.35);padding:5px 12px;border-radius:999px;pointer-events:none;
+  animation:projfade 4s forwards}
+@keyframes projfade{0%,70%{opacity:1}100%{opacity:0}}
+
 /* ---------- AI asistent „Spýtaj sa mesta" ---------- */
 .ask-fab{position:absolute;right:18px;bottom:18px;z-index:8;display:flex;align-items:center;gap:9px;
   padding:12px 18px;border-radius:999px;border:1px solid rgba(48,40,123,.4);cursor:pointer;

@@ -207,6 +207,8 @@ function setView(v) {
   }
   if (map.getLayer('landmarks3d')) map.triggerRepaint();
 }
+function enterProjector() { document.body.classList.add('projector'); map.easeTo({ pitch: 0, bearing: 0, duration: 700 }); }
+function exitProjector() { document.body.classList.remove('projector'); }
 
 /* ---------- hrdinské 3D landmarky (three.js custom layer) — len v Model pohľade ---------- */
 const HERO = [
@@ -467,7 +469,7 @@ map.on('load', async () => {
   try { addLandmarks3D(); } catch (e) { console.warn('landmarks3d', e); }
 
   // expose for screenshot tooling / debugging
-  window.__app = { map, gotoStop, setMood: applyLight, setView, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, addFacility, runOptimizer, setPlanner: (v) => { document.getElementById('t-planner').checked = v; document.getElementById('t-planner').dispatchEvent(new Event('change')); }, LANDMARKS, INDICATORS, CAT_ORDER, TOUR };
+  window.__app = { map, gotoStop, setMood: applyLight, setView, enterProjector, setIndicator, setCatLens, setWeights, showSpotAt, openLandmarkCard, addFacility, runOptimizer, setPlanner: (v) => { document.getElementById('t-planner').checked = v; document.getElementById('t-planner').dispatchEvent(new Event('change')); }, LANDMARKS, INDICATORS, CAT_ORDER, TOUR };
   window.__ready = true;
 
   /* hover budov */
@@ -1496,6 +1498,15 @@ function wireUI() {
   if (tmh) tmh.addEventListener('change', setMassColor);
   // default = biely model (London look)
   setView('model');
+
+  // projekčný režim — skryje UI + pohľad zhora (na premietanie na stôl/maketu)
+  const pe = document.getElementById('proj-enter'); if (pe) pe.addEventListener('click', enterProjector);
+  window.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (e.key === 'Escape') exitProjector();
+    else if (e.key === 'p' || e.key === 'P') document.body.classList.contains('projector') ? exitProjector() : enterProjector();
+  });
+  if (new URLSearchParams(location.search).has('projector')) enterProjector();
 
   // onboarding — kino-cover sa odplaví a kamera doletí do mesta
   const intro = document.getElementById('intro');

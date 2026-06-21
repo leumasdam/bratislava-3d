@@ -52,6 +52,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('ATLAS', JSON.stringify(atlas));
   await page.screenshot({ path: p.join(__dirname,'screens','atlas-check.png') });
   await page.evaluate(()=>window.__app.setView('model')); await sleep(800);
+  // projekčný režim
+  await page.evaluate(()=>window.__app.enterProjector()); await sleep(2000);
+  const proj = await page.evaluate(()=>({ projector: document.body.classList.contains('projector'), panelShown: getComputedStyle(document.querySelector('.panel')).display }));
+  console.log('PROJ', JSON.stringify(proj));
+  await page.screenshot({ path: p.join(__dirname,'screens','proj-check.png') });
   console.log('errors:', errs.length?errs.slice(0,4):'none');
   await browser.close(); srv.close();
 })().catch(e=>{ console.error('FAIL', e.message); process.exit(1); });
