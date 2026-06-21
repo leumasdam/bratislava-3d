@@ -1335,6 +1335,8 @@ function wireUI() {
       const n = document.getElementById('mib-note'); if (n) n.hidden = true;
     }
   });
+  // projekty MIB zapnuté hneď po štarte (default-on) — viditeľné bez kliku
+  if (tMib) { tMib.checked = true; tMib.dispatchEvent(new Event('change')); }
 
   // onboarding — kino-cover sa odplaví a kamera doletí do mesta
   const intro = document.getElementById('intro');
